@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Check the term graph for broken references and report what still needs review.
 
-Usage: python scripts/validate.py
+Usage: uv run scripts/validate.py
 Exit code 1 if any error is found; warnings never fail the run.
 """
 import sys

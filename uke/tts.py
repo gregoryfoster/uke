@@ -88,7 +88,7 @@ class GoogleEngine(Engine):
             try:
                 from google.cloud import texttospeech
             except ImportError as e:
-                raise TTSError("pip install google-cloud-texttospeech to use the google engine.") from e
+                raise TTSError("google-cloud-texttospeech is missing; run `uv sync`.") from e
             if not self.project:
                 raise TTSError("set the Google Cloud project with --gcp-project or UKE_GCP_PROJECT.")
             self._tts = texttospeech
@@ -127,7 +127,7 @@ class EdgeEngine(Engine):
         try:
             import edge_tts
         except ImportError as e:
-            raise TTSError("pip install edge-tts to use the edge engine.") from e
+            raise TTSError("edge-tts is missing; run `uv sync`.") from e
         rate = f"{round((self.rates[lang] - 1) * 100):+d}%"
         path = out.with_suffix(".mp3")
         asyncio.run(edge_tts.Communicate(text, self.voices[lang], rate=rate).save(str(path)))

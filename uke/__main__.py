@@ -1,4 +1,4 @@
-"""Command line: python -m uke build deck|audio|all, python -m uke voices, python -m uke sample."""
+"""Command line: uke build deck|audio|all, uke voices, uke sample (also `python -m uke ...`)."""
 from __future__ import annotations
 
 import argparse
@@ -28,7 +28,7 @@ def engine_args(p: argparse.ArgumentParser) -> None:
 
 
 def main(argv=None) -> int:
-    ap = argparse.ArgumentParser(prog="python -m uke")
+    ap = argparse.ArgumentParser(prog="uke")
     sub = ap.add_subparsers(dest="cmd", required=True)
     b = sub.add_parser("build", help="generate the Anki deck and/or commute audio from data/")
     b.add_argument("target", choices=["deck", "audio", "all"])
