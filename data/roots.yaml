@@ -1,0 +1,86 @@
+# Roots (morphemes) that build every term.
+# status: draft -> confirmed once Sensei reviews the meaning.
+# kanji_status: draft -> verified once checked in a trusted dictionary (e.g. Jisho.org, which draws on JMdict).
+# sound_changes: the forms a root takes when joined to another word (tori -> dori).
+roots:
+  # body
+  - {id: te,            romaji: te,     kana: "て",    kanji: "手",   meaning: "hand",                       status: draft, kanji_status: draft}
+  - {id: ko-small,      romaji: ko,     kana: "こ",    kanji: "小",   meaning: "small",                      status: draft, kanji_status: draft}
+  - {id: kubi,          romaji: kubi,   kana: "くび",  kanji: "首",   meaning: "neck",                       status: draft, kanji_status: draft}
+  - {id: kata-shoulder, romaji: kata,   kana: "かた",  kanji: "肩",   meaning: "shoulder",                   status: draft, kanji_status: draft, homophones: [kata-one-side, kata-form]}
+  - {id: mune,          romaji: mune,   kana: "むね",  kanji: "胸",   meaning: "chest",                      status: draft, kanji_status: draft}
+  - {id: men,           romaji: men,    kana: "めん",  kanji: "面",   meaning: "face",                       status: draft, kanji_status: draft}
+  - {id: ude,           romaji: ude,    kana: "うで",  kanji: "腕",   meaning: "arm",                        status: draft, kanji_status: draft}
+  - {id: mi,            romaji: mi,     kana: "み",    kanji: "身",   meaning: "body, self",                 status: draft, kanji_status: draft}
+
+  # side, quantity, direction
+  - {id: kata-one-side, romaji: kata,   kana: "かた",  kanji: "片",   meaning: "one side, one of a pair",    status: draft, kanji_status: draft, homophones: [kata-shoulder, kata-form]}
+  - {id: ryo,           romaji: ryo,    kana: "りょう", kanji: "両",  meaning: "both",                       status: draft, kanji_status: draft}
+  - {id: ta,            romaji: ta,     kana: "た",    kanji: "多",   meaning: "many",                       status: draft, kanji_status: draft}
+  - {id: ninzu,         romaji: ninzu,  kana: "にんずう", kanji: "人数", meaning: "number of people",        status: draft, kanji_status: draft}
+  - {id: ushiro,        romaji: ushiro, kana: "うしろ", kanji: "後ろ", meaning: "behind",                    status: draft, kanji_status: draft}
+  - {id: sho,           romaji: sho,    kana: "しょう", kanji: "正",  meaning: "straight, correct",          status: draft, kanji_status: draft}
+  - {id: yoko,          romaji: yoko,   kana: "よこ",  kanji: "横",   meaning: "side",                       status: draft, kanji_status: draft}
+  - {id: zen,           romaji: zen,    kana: "ぜん",  kanji: "前",   meaning: "front, forward",             status: draft, kanji_status: draft}
+  - {id: go-behind,     romaji: go,     kana: "ご",    kanji: "後",   meaning: "back, behind",               status: draft, kanji_status: draft}
+  - {id: ko-back,       romaji: ko,     kana: "こう",  kanji: "後",   meaning: "back, rear",                 status: draft, kanji_status: draft}
+  - {id: sa,            romaji: sa,     kana: "さ",    kanji: "左",   meaning: "left",                       status: draft, kanji_status: draft}
+  - {id: yu,            romaji: yu,     kana: "ゆう",  kanji: "右",   meaning: "right",                      status: draft, kanji_status: draft}
+  - {id: ho,            romaji: ho,     kana: "ほう",  kanji: "方",   meaning: "direction",                  status: draft, kanji_status: draft, sound_changes: [po]}
+  - {id: jo-up,         romaji: jo,     kana: "じょう", kanji: "上",  meaning: "up, upper",                  status: draft, kanji_status: draft}
+  - {id: omote,         romaji: omote,  kana: "おもて", kanji: "表",  meaning: "front, surface",             status: draft, kanji_status: draft}
+  - {id: ura,           romaji: ura,    kana: "うら",  kanji: "裏",   meaning: "back, reverse side",         status: draft, kanji_status: draft}
+  - {id: ten,           romaji: ten,    kana: "てん",  kanji: "天",   meaning: "heaven",                     status: draft, kanji_status: draft}
+  - {id: chi,           romaji: chi,    kana: "ち",    kanji: "地",   meaning: "earth",                      status: draft, kanji_status: draft}
+
+  # numbers (also the counting used in kata)
+  - {id: ichi,    romaji: ichi,   kana: "いち",  kanji: "一", meaning: "one",   status: draft, kanji_status: draft, sound_changes: [ik]}
+  - {id: ni,      romaji: ni,     kana: "に",    kanji: "二", meaning: "two",   status: draft, kanji_status: draft}
+  - {id: san,     romaji: san,    kana: "さん",  kanji: "三", meaning: "three", status: draft, kanji_status: draft}
+  - {id: shi,     romaji: shi,    kana: "し",    kanji: "四", meaning: "four",  status: draft, kanji_status: draft, alternate: yon}
+  - {id: yon,     romaji: yon,    kana: "よん",  kanji: "四", meaning: "four",  status: draft, kanji_status: draft, alternate: shi}
+  - {id: go-five, romaji: go,     kana: "ご",    kanji: "五", meaning: "five",  status: draft, kanji_status: draft}
+  - {id: roku,    romaji: roku,   kana: "ろく",  kanji: "六", meaning: "six",   status: draft, kanji_status: draft}
+  - {id: shichi,  romaji: shichi, kana: "しち",  kanji: "七", meaning: "seven", status: draft, kanji_status: draft, alternate: nana}
+  - {id: hachi,   romaji: hachi,  kana: "はち",  kanji: "八", meaning: "eight", status: draft, kanji_status: draft, sound_changes: [hap]}
+  - {id: ku,      romaji: ku,     kana: "く",    kanji: "九", meaning: "nine",  status: draft, kanji_status: draft, alternate: kyu}
+  - {id: ju,      romaji: ju,     kana: "じゅう", kanji: "十", meaning: "ten",  status: draft, kanji_status: draft}
+
+  # actions
+  - {id: tori,       romaji: tori,     kana: "とり",   kanji: "取り",   meaning: "take, grab",                status: draft, kanji_status: draft, sound_changes: [dori]}
+  - {id: mochi,      romaji: mochi,    kana: "もち",   kanji: "持ち",   meaning: "hold",                      status: draft, kanji_status: draft}
+  - {id: uchi,       romaji: uchi,     kana: "うち",   kanji: "打ち",   meaning: "strike",                    status: draft, kanji_status: draft}
+  - {id: tsuki,      romaji: tsuki,    kana: "つき",   kanji: "突き",   meaning: "thrust",                    status: draft, kanji_status: draft}
+  - {id: shime,      romaji: shime,    kana: "しめ",   kanji: "絞め",   meaning: "tighten, choke",            status: draft, kanji_status: draft}
+  - {id: kosa,       romaji: kosa,     kana: "こうさ", kanji: "交差",   meaning: "cross",                     status: draft, kanji_status: draft}
+  - {id: nage,       romaji: nage,     kana: "なげ",   kanji: "投げ",   meaning: "throw; also the person throwing", status: draft, kanji_status: draft}
+  - {id: kaeshi,     romaji: kaeshi,   kana: "かえし", kanji: "返し",   meaning: "turn over, return",         status: draft, kanji_status: draft, sound_changes: [gaeshi]}
+  - {id: iri,        romaji: iri,      kana: "いり",   kanji: "入り",   meaning: "enter",                     status: draft, kanji_status: draft}
+  - {id: kyo,        romaji: kyo,      kana: "きょう", kanji: "教",     meaning: "teaching",                  status: draft, kanji_status: draft}
+  - {id: ko-exhale,  romaji: ko,       kana: "こ",     kanji: "呼",     meaning: "exhale, call out",          status: draft, kanji_status: draft}
+  - {id: kyu-inhale, romaji: kyu,      kana: "きゅう", kanji: "吸",     meaning: "inhale",                    status: draft, kanji_status: draft}
+  - {id: dosa,       romaji: dosa,     kana: "どうさ", kanji: "動作",   meaning: "movement, motion",          status: draft, kanji_status: draft}
+  - {id: tenkan,     romaji: tenkan,   kana: "てんかん", kanji: "転換", meaning: "turning, conversion",       status: draft, kanji_status: draft}
+  - {id: katameru,   romaji: katameru, kana: "かためる", kanji: "固める", meaning: "harden, fix in place (pin)", status: draft, kanji_status: draft}
+  - {id: maki,       romaji: maki,     kana: "まき",   kanji: "巻き",   meaning: "wind, wrap",                status: draft, kanji_status: draft}
+  - {id: komi,       romaji: komi,     kana: "こみ",   kanji: "込み",   meaning: "into",                      status: draft, kanji_status: draft}
+  - {id: kake,       romaji: kake,     kana: "かけ",   kanji: "掛け",   meaning: "attack, engage",            status: draft, kanji_status: draft, sound_changes: [gake]}
+  - {id: mawashi,    romaji: mawashi,  kana: "まわし", kanji: "回し",   meaning: "rotate, turn",              status: draft, kanji_status: draft}
+  - {id: shindo,     romaji: shindo,   kana: "しんどう", kanji: "振動", meaning: "shaking, vibration",        status: draft, kanji_status: draft}
+  - {id: funakogi,   romaji: funakogi, kana: "ふなこぎ", kanji: "舟漕ぎ", meaning: "rowing a boat",           status: draft, kanji_status: draft}
+  - {id: ido,        romaji: ido,      kana: "いどう", kanji: "移動",   meaning: "moving, shifting",          status: draft, kanji_status: draft}
+  - {id: chidori,    romaji: chidori,  kana: "ちどり", kanji: "千鳥",   meaning: "plover; a zigzag step",     status: draft, kanji_status: draft}
+  - {id: shin-advance, romaji: shin,   kana: "しん",   kanji: "進",     meaning: "advance",                   status: draft, kanji_status: draft}
+  - {id: tento,      romaji: tento,    kana: "てんとう", kanji: "転倒", meaning: "falling over",              status: draft, kanji_status: draft}
+
+  # practice and principle vocabulary
+  - {id: kata-form, romaji: kata,   kana: "かた",  kanji: "型", meaning: "form, set pattern",    status: draft, kanji_status: draft, homophones: [kata-one-side, kata-shoulder]}
+  - {id: waza,      romaji: waza,   kana: "わざ",  kanji: "技", meaning: "technique",            status: draft, kanji_status: draft}
+  - {id: kumi,      romaji: kumi,   kana: "くみ",  kanji: "組", meaning: "paired, grouped",      status: draft, kanji_status: draft}
+  - {id: uke,       romaji: uke,    kana: "うけ",  kanji: "受け", meaning: "receive; the person receiving the technique", status: draft, kanji_status: draft}
+  - {id: ki,        romaji: ki,     kana: "き",    kanji: "気", meaning: "life energy, spirit",  status: draft, kanji_status: draft}
+  - {id: ai,        romaji: ai,     kana: "あい",  kanji: "合", meaning: "join, harmonize",      status: draft, kanji_status: draft}
+  - {id: kokoro,    romaji: kokoro, kana: "こころ", kanji: "心", meaning: "heart, mind",         status: draft, kanji_status: draft, note: "Read shin in compounds such as Yuishinkai (唯心会)."}
+  - {id: tai,       romaji: tai,    kana: "たい",  kanji: "体", meaning: "body",                 status: draft, kanji_status: draft}
+  - {id: ko-solid,  romaji: ko,     kana: "こ",    kanji: "固", meaning: "solid, firm",          status: draft, kanji_status: draft}
+  - {id: ryu,       romaji: ryu,    kana: "りゅう", kanji: "流", meaning: "flow",                status: draft, kanji_status: draft}

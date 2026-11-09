@@ -1,0 +1,36 @@
+# Video links taken from the dojo criteria (source: dojo-criteria-2022).
+# subject: a kumi_waza id, a kata id, a term id, or "kata-all" for the full kata playlist.
+# start / end: seconds, to be filled when clips are trimmed. year: when the clip was recorded, if known.
+# Maruyama Sensei's aikido evolved over the years; dojo instruction wins any conflict with a clip.
+media:
+  - {id: m-kata-playlist,                  subject: kata-all,                              url: "https://www.youtube.com/watch?v=WH4pLdZnKV4&list=PL-MkzI3m7lt1aI72JiSjfWVNYnrGYZa5D"}
+  - {id: m-katatekosadori-kokyunage,       subject: katatekosadori-kokyunage,              url: "https://www.youtube.com/watch?v=xcJqd0qAzGI"}
+  - {id: m-katatedori-tenkan-kokyunage,    subject: katatedori-tenkan-kokyunage,           url: "https://www.youtube.com/watch?v=lrvdDD3Yc-E"}
+  - {id: m-katadori-ikkyo-omote,           subject: katadori-ikkyo-omote-katameru,         url: "https://www.youtube.com/watch?v=N1NUIwqHlhI"}
+  - {id: m-katadori-ikkyo-ura,             subject: katadori-ikkyo-ura-katameru,           url: "https://www.youtube.com/watch?v=VRE427znmgQ"}
+  - {id: m-shomenuchi-iriminage,           subject: shomenuchi-iriminage,                  url: "https://www.youtube.com/watch?v=1nq8f9O0raU"}
+  - {id: m-yokomenuchi-shihonage-omote,    subject: yokomenuchi-shihonage-omote,           url: "https://www.youtube.com/watch?v=KgmxRtgIZz8"}
+  - {id: m-yokomenuchi-shihonage-ura,      subject: yokomenuchi-shihonage-ura,             url: "https://www.youtube.com/watch?v=ZvrzWri-GMU"}
+  - {id: m-munetsuki-kotegaeshi,           subject: munetsuki-kotegaeshi-katameru,         url: "https://www.youtube.com/watch?v=sb4CoFKcOcw"}
+  - {id: m-katadori-nikyo-omote,           subject: katadori-nikyo-omote-katameru,         url: "https://www.youtube.com/watch?v=k5pqKEp7Qps"}
+  - {id: m-katadori-nikyo-ura,             subject: katadori-nikyo-ura-katameru,           url: "https://www.youtube.com/watch?v=Wy522fMEqTM"}
+  - {id: m-ushirodori-kokyunage-zenponage, subject: ushirodori-kokyunage-zenponage,        url: "https://www.youtube.com/watch?v=gnPcJFal-s0"}
+  - {id: m-kokyu-dosa,                     subject: kokyu-dosa,                            url: "https://www.youtube.com/watch?v=sX-f_5CiFjw"}
+  - {id: m-yokomenuchi-kokyunage-makikomi, subject: yokomenuchi-kokyunage-makikomi,        url: "https://www.youtube.com/watch?v=gX9NSxyMTRw"}
+  - {id: m-shomenuchi-kotegaeshi,          subject: shomenuchi-kotegaeshi,                 url: "https://www.youtube.com/watch?v=4NFhW5Cg89o"}
+  - {id: m-katadori-sankyo-omote,          subject: katadori-sankyo-omote-katameru,        url: "https://www.youtube.com/watch?v=IbNn2yZCqLc"}
+  - {id: m-katadori-sankyo-ura,            subject: katadori-sankyo-ura-katameru,          url: "https://www.youtube.com/watch?v=mB2XePA12oM"}
+  - {id: m-katadori-yonkyo-omote,          subject: katadori-yonkyo-omote-katameru,        url: "https://www.youtube.com/watch?v=PHS49C94DSU",
+     note: "Shows Omote Katameru only, both sides. The criteria also link it for Ura; that link is wrong, so Ura has no clip yet."}
+  # Later grades (subjects not yet entered as kumi_waza; kept for the next pass)
+  - {id: m-ushiro-ryotekubidori-ikkyo, subject: null, label: Ushiro Ryotekubidori Ikkyo, url: "https://www.youtube.com/watch?v=RIKB6QsAUtY"}
+  - {id: m-zagi-handachi,              subject: null, label: Zagi handachi,              url: "https://www.youtube.com/watch?v=0GDB9ziwEs0"}
+  - {id: m-zagi,                       subject: null, label: Zagi,                       url: "https://www.youtube.com/watch?v=lXq1otsZoRY"}
+  - {id: m-bokken-dori,                subject: null, label: Bokken Dori,                url: "https://www.youtube.com/watch?v=dzM_hnEj7oQ"}
+  - {id: m-tanto-dori,                 subject: null, label: Tanto Dori,                 url: "https://www.youtube.com/watch?v=Mj2j2G0j_3w"}
+  - {id: m-jo-dori,                    subject: null, label: Jo Dori,                    url: "https://www.youtube.com/watch?v=A3zBZYGpH7E"}
+  - {id: m-jo-nage,                    subject: null, label: Jo Nage,                    url: "https://www.youtube.com/watch?v=3Eud4JTa6MI"}
+  - {id: m-sword-of-nine-ways,         subject: null, label: Sword of Nine Ways,         url: "https://www.youtube.com/watch?v=pkyP39Ko_iE"}
+  - {id: m-free-wielding-sword,        subject: null, label: Free Wielding Sword,        url: "https://www.youtube.com/watch?v=P4e0lQ_Xf08"}
+  - {id: m-shooting-star,              subject: null, label: Shooting Star,              url: "https://www.youtube.com/watch?v=iPiW3hNFO_0"}
+  - {id: m-butterfly,                  subject: null, label: Butterfly,                  url: "https://www.youtube.com/watch?v=_rR3a-GAshs"}

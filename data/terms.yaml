@@ -1,0 +1,306 @@
+# Terms are built from roots, in order. Dojo spelling is primary; variants come from other sources.
+# category: attack | technique | modifier | direction | finish | exercise | practice | level | role
+# gloss_en: several English renderings are allowed; the first is the default.
+terms:
+  # ---- attacks ----
+  - id: katatedori
+    romaji: Katatedori
+    category: attack
+    roots: [kata-one-side, te, tori]
+    gloss_en: ["one-hand grab", "single wrist grab"]
+    kana: "かたてどり"
+    kanji: "片手取り"
+  - id: katatekosadori
+    romaji: Katatekosadori
+    category: attack
+    roots: [kata-one-side, te, kosa, tori]
+    gloss_en: ["cross-hand grab"]
+    kana: "かたてこうさどり"
+    kanji: "片手交差取り"
+    spelling_variants: [Katatekousadori, Katate Kosadori]
+  - id: katadori
+    romaji: Katadori
+    category: attack
+    roots: [kata-shoulder, tori]
+    gloss_en: ["shoulder grab"]
+    kana: "かたどり"
+    kanji: "肩取り"
+  - id: ryotedori
+    romaji: Ryotedori
+    category: attack
+    roots: [ryo, te, tori]
+    gloss_en: ["both wrists grabbed", "two-hand grab"]
+    kana: "りょうてどり"
+    kanji: "両手取り"
+    spelling_variants: [Ryoutedori]
+  - id: ryotemochi
+    romaji: Ryotemochi
+    category: attack
+    roots: [ryo, te, mochi]
+    gloss_en: ["two hands holding one arm"]
+    kana: "りょうてもち"
+    kanji: "両手持ち"
+    aliases: [Morotedori]
+    spelling_variants: [Ryoutemochi, Katatedori Ryotemochi]
+    note: The dojo criteria say this is the same as Morotedori.
+  - id: ushirotekubidori
+    romaji: Ushirotekubidori
+    category: attack
+    roots: [ushiro, te, kubi, tori]
+    gloss_en: ["wrists grabbed from behind"]
+    kana: "うしろてくびどり"
+    kanji: "後ろ手首取り"
+  - id: ushiro-ryotekubidori
+    romaji: Ushiro Ryotekubidori
+    category: attack
+    roots: [ushiro, ryo, te, kubi, tori]
+    gloss_en: ["both wrists grabbed from behind"]
+    kana: "うしろりょうてくびどり"
+    kanji: "後ろ両手首取り"
+    spelling_variants: [Ushiro Ryoutekubidori]
+  - id: ushirodori
+    romaji: Ushirodori
+    category: attack
+    roots: [ushiro, tori]
+    gloss_en: ["grab from behind"]
+    kana: "うしろどり"
+    kanji: "後ろ取り"
+  - id: shomenuchi
+    romaji: Shomenuchi
+    category: attack
+    roots: [sho, men, uchi]
+    gloss_en: ["straight strike to the head", "front strike"]
+    kana: "しょうめんうち"
+    kanji: "正面打ち"
+    spelling_variants: [Shoumenuchi]
+  - id: yokomenuchi
+    romaji: Yokomenuchi
+    category: attack
+    roots: [yoko, men, uchi]
+    gloss_en: ["side strike to the head"]
+    kana: "よこめんうち"
+    kanji: "横面打ち"
+  - id: munetsuki
+    romaji: Munetsuki
+    category: attack
+    roots: [mune, tsuki]
+    gloss_en: ["thrust to the chest"]
+    kana: "むねつき"
+    kanji: "胸突き"
+    spelling_variants: [Munatuki]
+  - id: tsuki
+    romaji: Tsuki
+    category: attack
+    roots: [tsuki]
+    gloss_en: ["thrust", "punch"]
+    kana: "つき"
+    kanji: "突き"
+    spelling_variants: [Tuki]
+
+  # ---- techniques ----
+  - id: ikkyo
+    romaji: Ikkyo
+    category: technique
+    roots: [ichi, kyo]
+    gloss_en: ["first teaching"]
+    kana: "いっきょう"
+    kanji: "一教"
+    spelling_variants: [Ikkyou]
+  - id: nikyo
+    romaji: Nikyo
+    category: technique
+    roots: [ni, kyo]
+    gloss_en: ["second teaching"]
+    kana: "にきょう"
+    kanji: "二教"
+    spelling_variants: [Nikyou]
+  - id: sankyo
+    romaji: Sankyo
+    category: technique
+    roots: [san, kyo]
+    gloss_en: ["third teaching"]
+    kana: "さんきょう"
+    kanji: "三教"
+    spelling_variants: [Sankyou, Sankyu]
+  - id: yonkyo
+    romaji: Yonkyo
+    category: technique
+    roots: [yon, kyo]
+    gloss_en: ["fourth teaching"]
+    kana: "よんきょう"
+    kanji: "四教"
+    spelling_variants: [Yonkyou]
+  - id: iriminage
+    romaji: Iriminage
+    category: technique
+    roots: [iri, mi, nage]
+    gloss_en: ["entering throw", "entering-body throw"]
+    kana: "いりみなげ"
+    kanji: "入身投げ"
+  - id: shihonage
+    romaji: Shihonage
+    category: technique
+    roots: [shi, ho, nage]
+    gloss_en: ["four-direction throw"]
+    kana: "しほうなげ"
+    kanji: "四方投げ"
+    spelling_variants: [Shihounage]
+  - id: kotegaeshi
+    romaji: Kotegaeshi
+    category: technique
+    roots: [ko-small, te, kaeshi]
+    gloss_en: ["wrist turn-over", "forearm return"]
+    kana: "こてがえし"
+    kanji: "小手返し"
+  - id: kokyunage
+    romaji: Kokyunage
+    category: technique
+    roots: [ko-exhale, kyu-inhale, nage]
+    gloss_en: ["breath throw", "timing throw"]
+    kana: "こきゅうなげ"
+    kanji: "呼吸投げ"
+    spelling_variants: [Kokyunge]
+  - id: tenchinage
+    romaji: Tenchinage
+    category: technique
+    roots: [ten, chi, nage]
+    gloss_en: ["heaven-and-earth throw"]
+    kana: "てんちなげ"
+    kanji: "天地投げ"
+  - id: sankyonage
+    romaji: Sankyonage
+    category: technique
+    roots: [san, kyo, nage]
+    gloss_en: ["throw from the third teaching"]
+    kana: "さんきょうなげ"
+    kanji: "三教投げ"
+  - id: zenponage
+    romaji: Zenponage
+    category: technique
+    roots: [zen, ho, nage]
+    gloss_en: ["forward throw"]
+    kana: "ぜんぽうなげ"
+    kanji: "前方投げ"
+    spelling_variants: [Zenpounage]
+
+  # ---- modifiers ----
+  - id: tenkan
+    romaji: Tenkan
+    category: modifier
+    roots: [tenkan]
+    gloss_en: ["turning"]
+    kana: "てんかん"
+    kanji: "転換"
+  - id: makikomi
+    romaji: Makikomi
+    category: modifier
+    roots: [maki, komi]
+    gloss_en: ["winding in", "wrapping in"]
+    kana: "まきこみ"
+    kanji: "巻き込み"
+  - id: kubishime
+    romaji: Kubishime
+    category: modifier
+    roots: [kubi, shime]
+    gloss_en: ["choke"]
+    kana: "くびしめ"
+    kanji: "首絞め"
+
+  # ---- direction and finish ----
+  - id: omote
+    romaji: Omote
+    category: direction
+    roots: [omote]
+    gloss_en: ["front", "entering version"]
+    kana: "おもて"
+    kanji: "表"
+  - id: ura
+    romaji: Ura
+    category: direction
+    roots: [ura]
+    gloss_en: ["back", "turning version"]
+    kana: "うら"
+    kanji: "裏"
+  - id: katameru
+    romaji: Katameru
+    category: finish
+    roots: [katameru]
+    gloss_en: ["pin", "fix in place"]
+    kana: "かためる"
+    kanji: "固める"
+
+  # ---- exercises, practice, roles ----
+  - id: kokyu-dosa
+    romaji: Kokyu Dosa
+    category: exercise
+    roots: [ko-exhale, kyu-inhale, dosa]
+    gloss_en: ["breath movement"]
+    kana: "こきゅうどうさ"
+    kanji: "呼吸動作"
+  - id: kumi-waza
+    romaji: Kumi waza
+    category: practice
+    roots: [kumi, waza]
+    gloss_en: ["paired techniques"]
+    kana: "くみわざ"
+    kanji: "組技"
+  - id: taninzugake
+    romaji: Taninzugake
+    category: practice
+    roots: [ta, ninzu, kake]
+    gloss_en: ["multiple-attacker practice"]
+    kana: "たにんずうがけ"
+    kanji: "多人数掛け"
+  - id: ukemi
+    romaji: Ukemi
+    category: practice
+    roots: [uke, mi]
+    gloss_en: ["falling", "receiving the technique"]
+    kana: "うけみ"
+    kanji: "受け身"
+  - id: kiai
+    romaji: Kiai
+    category: practice
+    roots: [ki, ai]
+    gloss_en: ["focused spirit"]
+    kana: "きあい"
+    kanji: "気合"
+    spelling_variants: [Ki Ai, KiAi]
+  - id: uke
+    romaji: Uke
+    category: role
+    roots: [uke]
+    gloss_en: ["the partner who attacks and receives"]
+    kana: "うけ"
+    kanji: "受け"
+  - id: nage-role
+    romaji: Nage
+    category: role
+    roots: [nage]
+    gloss_en: ["the partner who performs the technique"]
+    kana: "なげ"
+    kanji: "投げ"
+
+  # ---- levels of practice ----
+  - id: kotai
+    romaji: Kotai
+    category: level
+    roots: [ko-solid, tai]
+    gloss_en: ["solid-body level"]
+    kana: "こたい"
+    kanji: "固体"
+  - id: juntai
+    romaji: Juntai
+    category: level
+    roots: [tai]
+    gloss_en: ["flexible-body level"]
+    kana: null
+    kanji: null
+    note: Dojo spelling is Juntai; other sources write Jutai. Confirm the kanji before adding roots.
+  - id: ryutai
+    romaji: Ryutai
+    category: level
+    roots: [ryu, tai]
+    gloss_en: ["flowing-body level"]
+    kana: "りゅうたい"
+    kanji: "流体"

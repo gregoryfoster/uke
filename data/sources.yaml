@@ -1,0 +1,21 @@
+# Documents the data is drawn from. Entries elsewhere cite these ids.
+sources:
+  - id: dojo-criteria-2022
+    title: Aikido Olympia — Promotion Process and Examination Criteria
+    date: 2022-10-08
+    url: https://aikidoolympia.net/training/testing-and-promotion/
+    authority: primary          # the dojo document is the source of truth
+    note: The April 2023 version is on paper; scan it and supersede this entry.
+  - id: hq-guideline-2014
+    title: Aikido Yuishinkai Test Guideline 2014/04/01
+    date: 2014-04-01
+    url: https://www.aikidoyuishinkai.org/test-guideline/
+    authority: secondary        # headquarters syllabus; used for spelling variants and cross-checks
+  - id: dojo-motto
+    title: Aikido Olympia — Motto (Maruyama Sensei)
+    url: https://aikidoolympia.net/aikido-olympia-yuishinkai/motto/
+    authority: primary
+  - id: dojo-training
+    title: Aikido Olympia — Training guidelines
+    url: https://aikidoolympia.net/training/
+    authority: primary

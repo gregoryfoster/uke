@@ -1,0 +1,65 @@
+# Grade requirements (source: dojo-criteria-2022).
+# Both nage and uke must know the names for their exam AND one level above,
+# so the study set = the next exam's grade + the grade after it.
+profile:
+  current_rank: 5kyu          # held since: add the date if useful
+  next_exam: 4kyu
+
+grades:
+  - id: 5kyu
+    order: 1
+    belt: Green
+    classes: "30 minimum"
+    levels: [kotai, juntai]
+    kata_with_counting: true
+    basic_arts: individually
+    kumi_waza:
+      - katatekosadori-kokyunage
+      - katatedori-tenkan-kokyunage
+      - katadori-ikkyo-omote-katameru
+      - katadori-ikkyo-ura-katameru
+    exercises: [kokyu-dosa]
+
+  - id: 4kyu
+    order: 2
+    belt: Blue
+    classes: "30 since last promotion"
+    levels: [juntai]
+    kata_with_counting: true
+    basic_arts: as-a-set
+    kumi_waza:
+      - katatekosadori-kotegaeshi-omote
+      - katatekosadori-kotegaeshi-ura
+      - ryotedori-tenchinage-omote
+      - ryotedori-tenchinage-ura
+      - ushirotekubidori-sankyo-katameru
+    exercises: [kokyu-dosa]
+
+  - id: 3kyu
+    order: 3
+    belt: Purple
+    classes: "35 since last promotion"
+    levels: []                 # not stated in the dojo criteria
+    kata_with_counting: true
+    basic_arts: as-a-set
+    kumi_waza:
+      - yokomenuchi-kokyunage-makikomi
+      - shomenuchi-kotegaeshi
+      - katadori-ikkyo-omote-katameru
+      - katadori-ikkyo-ura-katameru
+      - katadori-nikyo-omote-katameru
+      - katadori-nikyo-ura-katameru
+      - katadori-sankyo-omote-katameru
+      - katadori-sankyo-ura-katameru
+      - katadori-yonkyo-omote-katameru
+      - katadori-yonkyo-ura-katameru
+    free_arts:                 # any arts of nage's choice from this attack
+      - {attack: ryotedori, count: 3}
+      - {attack: ryotemochi, count: 3}
+      - {attack: ushirotekubidori, count: 3}
+    exercises: [kokyu-dosa]
+
+  # Later grades: summary only until a later pass enters their techniques.
+  - {id: 2kyu,   order: 4, belt: Brown,                  classes: "50 since last promotion", levels: [ryutai], entry_status: summary-only}
+  - {id: 1kyu,   order: 5, belt: Brown with hakama,      classes: "75 since last promotion", levels: [ryutai], entry_status: summary-only}
+  - {id: shodan, order: 6, belt: Black (1st degree),     classes: "100, plus instructor, chief instructor and founder approval", levels: [ryutai], entry_status: summary-only}
