@@ -18,11 +18,19 @@ the movement, and the principle behind each technique.
 | `personal.example/` | Templates for personal data (motto text, reflections); copy to `personal/`, which git ignores |
 | `scripts/validate.py` | Checks references and reports the study set and review status |
 
+## Setup
+
+The project uses [uv](https://docs.astral.sh/uv/). `uv sync` creates `.venv/` with the locked dependencies
+(Python version from `.python-version`); `uv run` does the same on demand.
+
+```
+uv sync
+```
+
 ## Check the data
 
 ```
-pip install -r requirements.txt
-python scripts/validate.py
+uv run scripts/validate.py
 ```
 
 ## Review status
@@ -32,11 +40,10 @@ kanji are checked in a trusted dictionary (`kanji_status: verified`).
 
 ## Build the deck and commute audio (Phase 1)
 
-Needs Python 3.10+ and ffmpeg (`brew install ffmpeg`). Output goes to `build/`, which git ignores.
+Needs ffmpeg (`brew install ffmpeg`). Output goes to `build/`, which git ignores.
 
 ```
-pip install -r requirements.txt
-python -m uke build all            # or: build deck, build audio
+uv run uke build all               # or: build deck, build audio
 ```
 
 | Output | What it is |
@@ -60,13 +67,12 @@ so only new or changed text is synthesized.
 | `edge` | Microsoft Edge read-aloud voices. Free and keyless, but an unofficial endpoint. |
 | `silent` | Silence sized to the text, for tests. |
 
-Pick voices with `--ja-voice` / `--en-voice` (or `UKE_JA_VOICE` / `UKE_EN_VOICE`). `python -m uke voices`
-lists Google voices; `python -m uke sample --engine google --ja-voice ja-JP-Neural2-B --en-voice en-US-Neural2-F` renders five terms
+Pick voices with `--ja-voice` / `--en-voice` (or `UKE_JA_VOICE` / `UKE_EN_VOICE`). `uv run uke voices`
+lists Google voices; `uv run uke sample --engine google --ja-voice ja-JP-Neural2-B --en-voice en-US-Neural2-F` renders five terms
 to `build/tts-samples/` for comparison. Check pronunciation with Sensei before relying on a voice.
 
 ### Tests
 
 ```
-pip install -r requirements-dev.txt
-python -m pytest
+uv run pytest
 ```

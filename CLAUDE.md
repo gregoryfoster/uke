@@ -27,7 +27,7 @@ Built for one student (currently 5th kyu) first, dojo mates later.
 - Kumi waza are composed from term ids in `parts`; one entry per direction (omote/ura) so each is recalled separately.
 
 ## Before committing
-Run `python scripts/validate.py`. It must exit 0. Mention any new warnings in the PR description.
+Run `uv run scripts/validate.py`. It must exit 0. Mention any new warnings in the PR description.
 
 ## Phases
 - Phase 0 (now): data files, roots table, validator.
