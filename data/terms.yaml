@@ -16,6 +16,8 @@ terms:
     roots: [kata-one-side, te, kosa, tori]
     gloss_en: ["cross-hand grab"]
     kana: "かたてこうさどり"
+    # Plain hiragana makes the voice pause inside こうさ (katateko… usadori); ー keeps kō one sound.
+    tts_kana: "かたてこーさどり"
     kanji: "片手交差取り"
     spelling_variants: [Katatekousadori, Katate Kosadori]
   - id: katadori

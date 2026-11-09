@@ -4,6 +4,7 @@
 Usage: uv run scripts/validate.py
 Exit code 1 if any error is found; warnings never fail the run.
 """
+import re
 import sys
 from collections import Counter
 from pathlib import Path
@@ -53,6 +54,18 @@ for r in roots.values():
 unused = sorted(set(roots) - used_roots)
 if unused:
     warnings.append(f"roots not used by any term or kata yet: {', '.join(unused)}")
+
+# tts_kana: a reading for the voice only, used when the kana alone is misread (e.g. a pause inside こうさ)
+KANA = re.compile(r"[\u3041-\u309f\u30a0-\u30ff\u3001 ]+")
+for label, coll in (("term", terms), ("kata", kata)):
+    for item in coll.values():
+        tts = item.get("tts_kana")
+        if tts is None:
+            continue
+        if not item.get("kana"):
+            errors.append(f"{label} '{item['id']}': tts_kana is set but kana is null")
+        if not KANA.fullmatch(tts):
+            errors.append(f"{label} '{item['id']}': tts_kana must be kana only, got '{tts}'")
 
 # kumi waza parts
 for k in kumi.values():

@@ -152,3 +152,26 @@ def test_study_status_comes_from_profile(built):
     review_only = built.ds.by_id("kumi_waza", "katatekosadori-kokyunage")
     assert review_only.status == "review"
     assert built.ds.by_id("kumi_waza", "ryotedori-tenchinage-ura").status == STUDY
+
+
+def test_tts_kana_is_spoken_but_kana_is_shown(built, anki):
+    e = built.ds.by_id("term", "katatekosadori")
+    assert e.kana == "かたてこうさどり"
+    assert e.speech == "かたてこーさどり"
+    assert note(anki, e)[0][2] == "かたてこうさどり"   # Kana field on the card
+    kumi = built.ds.by_id("kumi_waza", "katatekosadori-kotegaeshi-omote")
+    assert kumi.speech.startswith("かたてこーさどり、")
+    assert kumi.segments[0].speech == "かたてこーさどり"
+    # terms without tts_kana speak their kana
+    assert built.ds.by_id("term", "kotegaeshi").speech == built.ds.by_id("term", "kotegaeshi").kana
+
+
+def test_validator_rejects_bad_tts_kana(tmp_path):
+    shutil.copytree(REPO / "data", tmp_path / "data")
+    shutil.copytree(REPO / "scripts", tmp_path / "scripts")
+    terms = tmp_path / "data" / "terms.yaml"
+    terms.write_text(terms.read_text(encoding="utf-8").replace(
+        'tts_kana: "かたてこーさどり"', 'tts_kana: "katatekosadori"'), encoding="utf-8")
+    r = subprocess.run([sys.executable, str(tmp_path / "scripts" / "validate.py")], capture_output=True, text=True)
+    assert r.returncode == 1
+    assert "tts_kana must be kana only" in r.stdout + r.stderr
