@@ -1,0 +1,39 @@
+# Principles drawn only from lineage and dojo sources. Named ki principles are not taught at this stage.
+# Motto: Maruyama Sensei wrote it to be read aloud on waking, after training and before sleep.
+# The repo is public, so motto text is NOT stored here. Put it in personal/motto.yaml (gitignored);
+# see personal.example/motto.yaml. theme is a short paraphrase used to pick the daily prompt.
+motto:
+  - {id: motto-1, line: 1, theme: "identity as mind"}
+  - {id: motto-2, line: 2, theme: "positive thought invites good"}
+  - {id: motto-3, line: 3, theme: "negative thought works against you"}
+  - {id: motto-4, line: 4, theme: "optimism when the body suffers"}
+  - {id: motto-5, line: 5, theme: "undefeated by obstacles"}
+  - {id: motto-6, line: 6, theme: "joy, gratitude and hope"}
+  - {id: motto-7, line: 7, theme: "a bright spirit in word and deed"}
+  - {id: motto-8, line: 8, theme: "faith in life"}
+
+principles:
+  - id: p-ki-heart-mind
+    source: dojo-training
+    summary: The purpose of practice is strong and positive ki, an open heart and a clear mind.
+  - id: p-cleaning-is-training
+    source: dojo-training
+    summary: Even the simplest task, done with integrated mind, body and spirit, is training.
+  - id: p-bow-reflects-mind
+    source: dojo-training
+    summary: The body reflects the condition of the mind; the bow reflects the attitude.
+  - id: p-harmony-over-speed
+    source: dojo-criteria-2022
+    summary: Speed is not the priority; harmony and continuity of movement are, as nage and as uke.
+  - id: p-concentration-awareness-kiai
+    source: dojo-criteria-2022
+    summary: Demonstrate concentration, awareness and kiai; fill the dojo with your ki.
+  - id: p-levels-of-practice
+    source: dojo-criteria-2022
+    summary: Each technique deepens through Kotai, Juntai and Ryutai.
+    terms: [kotai, juntai, ryutai]
+  - id: p-daily-life
+    source: dojo-criteria-2022
+    summary: From Shodan, candidates teach an art and relate it to daily life; the daily prompt practises this now.
+
+# Your own reflections are personal data: keep them in personal/reflections.yaml (gitignored).

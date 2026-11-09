@@ -1,0 +1,35 @@
+# Partner techniques, one entry per direction so each is recalled separately.
+# parts: term ids in the order the name is spoken. The display name is built from them.
+# basic_art: position in the 8 Basic Arts set (null if not part of the set).
+# Scope of this pass: 5th through 3rd kyu (source: dojo-criteria-2022).
+kumi_waza:
+  # ---- 5th kyu ----
+  - {id: katatekosadori-kokyunage,           parts: [katatekosadori, kokyunage]}
+  - {id: katatedori-tenkan-kokyunage,        parts: [katatedori, tenkan, kokyunage]}
+  - {id: katadori-ikkyo-omote-katameru,      parts: [katadori, ikkyo, omote, katameru]}
+  - {id: katadori-ikkyo-ura-katameru,        parts: [katadori, ikkyo, ura, katameru]}
+
+  # ---- the 8 Basic Arts (individually at 5th kyu, as a set from 4th kyu) ----
+  - {id: shomenuchi-iriminage,                   parts: [shomenuchi, iriminage],                         basic_art: 1}
+  - {id: yokomenuchi-shihonage-omote,            parts: [yokomenuchi, shihonage, omote],                 basic_art: 2}
+  - {id: yokomenuchi-shihonage-ura,              parts: [yokomenuchi, shihonage, ura],                   basic_art: 3}
+  - {id: munetsuki-kotegaeshi-katameru,          parts: [munetsuki, kotegaeshi, katameru],               basic_art: 4}
+  - {id: katadori-nikyo-omote-katameru,          parts: [katadori, nikyo, omote, katameru],              basic_art: 5}
+  - {id: katadori-nikyo-ura-katameru,            parts: [katadori, nikyo, ura, katameru],                basic_art: 6}
+  - {id: ushirotekubidori-kubishime-sankyonage,  parts: [ushirotekubidori, kubishime, sankyonage],       basic_art: 7}
+  - {id: ushirodori-kokyunage-zenponage,         parts: [ushirodori, kokyunage, zenponage],              basic_art: 8}
+
+  # ---- 4th kyu ----
+  - {id: katatekosadori-kotegaeshi-omote,    parts: [katatekosadori, kotegaeshi, omote], note: "Uke forward roll and breakfall."}
+  - {id: katatekosadori-kotegaeshi-ura,      parts: [katatekosadori, kotegaeshi, ura],   note: "Uke forward roll and breakfall."}
+  - {id: ryotedori-tenchinage-omote,         parts: [ryotedori, tenchinage, omote]}
+  - {id: ryotedori-tenchinage-ura,           parts: [ryotedori, tenchinage, ura]}
+  - {id: ushirotekubidori-sankyo-katameru,   parts: [ushirotekubidori, sankyo, katameru]}
+
+  # ---- 3rd kyu ----
+  - {id: yokomenuchi-kokyunage-makikomi,     parts: [yokomenuchi, kokyunage, makikomi]}
+  - {id: shomenuchi-kotegaeshi,              parts: [shomenuchi, kotegaeshi]}
+  - {id: katadori-sankyo-omote-katameru,     parts: [katadori, sankyo, omote, katameru]}
+  - {id: katadori-sankyo-ura-katameru,       parts: [katadori, sankyo, ura, katameru]}
+  - {id: katadori-yonkyo-omote-katameru,     parts: [katadori, yonkyo, omote, katameru]}
+  - {id: katadori-yonkyo-ura-katameru,       parts: [katadori, yonkyo, ura, katameru]}

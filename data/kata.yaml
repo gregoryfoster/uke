@@ -1,0 +1,24 @@
+# The 21 Yuishinkai Aikido Kata, required of all students and performed with counting.
+# Order follows the dojo criteria (source: dojo-criteria-2022).
+kata:
+  - {id: kata-kohotento,        order: 1,  romaji: Kohotento, kana: "こうほうてんとう",               roots: [ko-back, ho, tento],                         gloss_en: ["backward fall"],                    spelling_variants: [Kouhoutentou]}
+  - {id: kata-nikyo,            order: 2,  romaji: Nikyo, kana: "にきょう",                   roots: [ni, kyo],                                    gloss_en: ["second teaching"],                  spelling_variants: [Nikyou]}
+  - {id: kata-kotegaeshi,       order: 3,  romaji: Kotegaeshi, kana: "こてがえし",              roots: [ko-small, te, kaeshi],                       gloss_en: ["wrist turn-over"]}
+  - {id: kata-sankyo,           order: 4,  romaji: Sankyo, kana: "さんきょう",                  roots: [san, kyo],                                   gloss_en: ["third teaching"],                   spelling_variants: [Sankyou]}
+  - {id: kata-tekubimawashi,    order: 5,  romaji: Tekubimawashi, kana: "てくびまわし",           roots: [te, kubi, mawashi],                          gloss_en: ["wrist rotation"]}
+  - {id: kata-tekubishindo,     order: 6,  romaji: Tekubishindo, kana: "てくびしんどう",            roots: [te, kubi, shindo],                           gloss_en: ["wrist shaking"],                    spelling_variants: [Tekubishindou]}
+  - {id: kata-funakogi,         order: 7,  romaji: Funakogi, kana: "ふなこぎ",                roots: [funakogi],                                   gloss_en: ["rowing exercise"]}
+  - {id: kata-ikkyo,            order: 8,  romaji: Ikkyo, kana: "いっきょう",                   roots: [ichi, kyo],                                  gloss_en: ["first teaching"],                   spelling_variants: [Ikkyou]}
+  - {id: kata-zengo,            order: 9,  romaji: Zengo, kana: "ぜんご",                   roots: [zen, go-behind],                             gloss_en: ["front and back"]}
+  - {id: kata-happo,            order: 10, romaji: Happo, kana: "はっぽう",                   roots: [hachi, ho],                                  gloss_en: ["eight directions"],                 spelling_variants: [Happou]}
+  - {id: kata-tekubikosa,       order: 11, romaji: Tekubikosa, kana: "てくびこうさ",              roots: [te, kubi, kosa],                             gloss_en: ["crossed wrists"],                   spelling_variants: [Tekubikousa]}
+  - {id: kata-tekubikosa-joho,  order: 12, romaji: Tekubikosa Joho, kana: "てくびこうさ じょうほう",         roots: [te, kubi, kosa, jo-up, ho],                  gloss_en: ["crossed wrists, upward"],           spelling_variants: [Tekubikousa jyohou]}
+  - {id: kata-sayu,             order: 13, romaji: Sayu, kana: "さゆう",                    roots: [sa, yu],                                     gloss_en: ["left and right"],                   spelling_variants: [Sayuu]}
+  - {id: kata-sayuido-chidori,  order: 14, romaji: Sayuido Chidori, kana: "さゆういどう ちどり",         roots: [sa, yu, ido, chidori],                       gloss_en: ["side-to-side shifting, zigzag step"], spelling_variants: [Sayuuidou Chidori]}
+  - {id: kata-tenkan,           order: 15, romaji: Tenkan, kana: "てんかん",                  roots: [tenkan],                                     gloss_en: ["turning"]}
+  - {id: kata-zenshin-koshin,   order: 16, romaji: Zenshin Koshin, kana: "ぜんしん こうしん",          roots: [zen, shin-advance, ko-back, shin-advance],   gloss_en: ["advancing and retreating"],         spelling_variants: [Zenshin Koushin]}
+  - {id: kata-udemawashi,       order: 17, romaji: Udemawashi, kana: "うでまわし",              roots: [ude, mawashi],                               gloss_en: ["arm rotation"]}
+  - {id: kata-shomenuchi-iriminage, order: 18, romaji: Shomenuchi Iriminage, kana: "しょうめんうち いりみなげ", roots: [sho, men, uchi, iri, mi, nage],             gloss_en: ["entering throw from a straight strike"], spelling_variants: [Shoumenuchi Iriminage]}
+  - {id: kata-ushirodori,       order: 19, romaji: Ushirodori, kana: "うしろどり",              roots: [ushiro, tori],                               gloss_en: ["grab from behind"]}
+  - {id: kata-ushirotekubidori-zenshin, order: 20, romaji: Ushirotekubidori Zenshin, kana: "うしろてくびどり ぜんしん", roots: [ushiro, te, kubi, tori, zen, shin-advance], gloss_en: ["wrists held from behind, advancing"]}
+  - {id: kata-ushirotekubidori-koshin,  order: 21, romaji: Ushirotekubidori Koshin, kana: "うしろてくびどり こうしん",  roots: [ushiro, te, kubi, tori, ko-back, shin-advance], gloss_en: ["wrists held from behind, retreating"], spelling_variants: [Ushirotekubidori Koushin]}

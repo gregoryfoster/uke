@@ -1,0 +1,5 @@
+pyyaml>=6
+genanki>=0.13
+# TTS engines: install the one you use (google is the default)
+google-cloud-texttospeech>=2.16
+edge-tts>=7
