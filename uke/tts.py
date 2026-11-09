@@ -76,7 +76,7 @@ class GoogleEngine(Engine):
     Set the project with --gcp-project or UKE_GCP_PROJECT; it is sent as the quota project.
     """
     name = "google"
-    default_voices = {"ja": "ja-JP-Neural2-B", "en": "en-US-Neural2-F"}
+    default_voices = {"ja": "ja-JP-Chirp3-HD-Kore", "en": "en-US-Chirp3-HD-Kore"}  # same voice in both languages
 
     def __init__(self, voices=None, rates=None, project: str | None = None):
         super().__init__(voices, rates)
@@ -92,7 +92,9 @@ class GoogleEngine(Engine):
             if not self.project:
                 raise TTSError("set the Google Cloud project with --gcp-project or UKE_GCP_PROJECT.")
             self._tts = texttospeech
-            self._client = texttospeech.TextToSpeechClient(client_options={"quota_project_id": self.project})
+            # REST, not gRPC: gRPC logs fork warnings every time ffmpeg runs as a subprocess
+            self._client = texttospeech.TextToSpeechClient(
+                transport="rest", client_options={"quota_project_id": self.project})
         return self._client
 
     def render(self, text, lang, out):

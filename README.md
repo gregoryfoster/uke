@@ -55,13 +55,13 @@ so only new or changed text is synthesized.
 
 | `--engine` | Notes |
 | --- | --- |
-| `google` (default) | Google Cloud Text-to-Speech. Set `UKE_GCP_PROJECT` (or `--gcp-project`) and log in with `gcloud auth application-default login`. |
+| `google` (default) | Google Cloud Text-to-Speech, voice Chirp 3 HD Kore in both languages. Set `UKE_GCP_PROJECT` (or `--gcp-project`) and log in with `gcloud auth application-default login`. |
 | `say` | macOS voices, offline. Install Kyoko (Premium) in System Settings > Accessibility > Spoken Content for better Japanese. |
 | `edge` | Microsoft Edge read-aloud voices. Free and keyless, but an unofficial endpoint. |
 | `silent` | Silence sized to the text, for tests. |
 
 Pick voices with `--ja-voice` / `--en-voice` (or `UKE_JA_VOICE` / `UKE_EN_VOICE`). `python -m uke voices`
-lists Google voices; `python -m uke sample --engine google --ja-voice ja-JP-Neural2-B` renders five terms
+lists Google voices; `python -m uke sample --engine google --ja-voice ja-JP-Neural2-B --en-voice en-US-Neural2-F` renders five terms
 to `build/tts-samples/` for comparison. Check pronunciation with Sensei before relying on a voice.
 
 ### Tests
