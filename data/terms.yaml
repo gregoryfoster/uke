@@ -73,6 +73,7 @@ terms:
     roots: [sho, men, uchi]
     gloss_en: ["straight strike to the head", "front strike"]
     kana: "しょうめんうち"
+    tts_kana: "しょーめんうち"  # plain hiragana made the voice drag the long vowel
     kanji: "正面打ち"
     spelling_variants: [Shoumenuchi]
   - id: yokomenuchi
@@ -114,6 +115,7 @@ terms:
     roots: [ni, kyo]
     gloss_en: ["second teaching"]
     kana: "にきょう"
+    tts_kana: "にきょー"  # plain hiragana made the voice drag the long vowel
     kanji: "二教"
     spelling_variants: [Nikyou]
   - id: sankyo
