@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import asyncio
 import hashlib
+import json
 import os
 import shutil
 import subprocess
@@ -70,9 +71,23 @@ class SayEngine(Engine):
         return path
 
 
-class GoogleEngine(Engine):
-    """Google Cloud Text-to-Speech. Uses Application Default Credentials.
+DEFAULT_GCLOUD_CONFIG = "~/.config/gcloud-uke"
 
+
+def gcloud_config_dir() -> Path:
+    """uke's own gcloud config directory: $UKE_GCLOUD_CONFIG, else ~/.config/gcloud-uke."""
+    return Path(os.environ.get("UKE_GCLOUD_CONFIG") or DEFAULT_GCLOUD_CONFIG).expanduser()
+
+
+def credentials_path() -> Path:
+    return gcloud_config_dir() / "application_default_credentials.json"
+
+
+class GoogleEngine(Engine):
+    """Google Cloud Text-to-Speech.
+
+    Credentials come only from uke's own gcloud config directory (see gcloud_config_dir), never from
+    the machine-wide ~/.config/gcloud or GOOGLE_APPLICATION_CREDENTIALS, which other projects share.
     Set the project with --gcp-project or UKE_GCP_PROJECT; it is sent as the quota project.
     """
     name = "google"
@@ -83,6 +98,25 @@ class GoogleEngine(Engine):
         self.project = project or os.environ.get("UKE_GCP_PROJECT")
         self._client = None
 
+    def credentials(self):
+        path = credentials_path()
+        if not path.is_file():
+            raise TTSError(
+                f"no uke Google credentials at {path}. Log in once with:\n"
+                f"  CLOUDSDK_CONFIG={gcloud_config_dir()} gcloud auth application-default login")
+        info = json.loads(path.read_text())
+        kind = info.get("type")
+        if kind == "authorized_user":
+            from google.oauth2.credentials import Credentials
+            creds = Credentials.from_authorized_user_info(info)
+        elif kind == "impersonated_service_account":
+            from google.auth.impersonated_credentials import Credentials
+            creds = Credentials.from_impersonated_service_account_info(info)
+        else:
+            raise TTSError(f"{path} holds '{kind}' credentials; uke accepts a user login or "
+                           "service-account impersonation from `gcloud auth application-default login`.")
+        return creds.with_quota_project(self.project)
+
     def client(self):
         if self._client is None:
             try:
@@ -91,10 +125,11 @@ class GoogleEngine(Engine):
                 raise TTSError("google-cloud-texttospeech is missing; run `uv sync`.") from e
             if not self.project:
                 raise TTSError("set the Google Cloud project with --gcp-project or UKE_GCP_PROJECT.")
+            creds = self.credentials()
             self._tts = texttospeech
             # REST, not gRPC: gRPC logs fork warnings every time ffmpeg runs as a subprocess
             self._client = texttospeech.TextToSpeechClient(
-                transport="rest", client_options={"quota_project_id": self.project})
+                credentials=creds, transport="rest", client_options={"quota_project_id": self.project})
         return self._client
 
     def render(self, text, lang, out):

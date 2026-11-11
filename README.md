@@ -62,7 +62,7 @@ so only new or changed text is synthesized.
 
 | `--engine` | Notes |
 | --- | --- |
-| `google` (default) | Google Cloud Text-to-Speech, voice Chirp 3 HD Kore in both languages. Set `UKE_GCP_PROJECT` (or `--gcp-project`) and log in with `gcloud auth application-default login`. |
+| `google` (default) | Google Cloud Text-to-Speech, voice Chirp 3 HD Kore in both languages. Set `UKE_GCP_PROJECT` (or `--gcp-project`) and log in once to uke's own gcloud config (see below). |
 | `say` | macOS voices, offline. Install Kyoko (Premium) in System Settings > Accessibility > Spoken Content for better Japanese. |
 | `edge` | Microsoft Edge read-aloud voices. Free and keyless, but an unofficial endpoint. |
 | `silent` | Silence sized to the text, for tests. |
@@ -70,6 +70,24 @@ so only new or changed text is synthesized.
 Pick voices with `--ja-voice` / `--en-voice` (or `UKE_JA_VOICE` / `UKE_EN_VOICE`). `uv run uke voices`
 lists Google voices; `uv run uke sample --engine google --ja-voice ja-JP-Neural2-B --en-voice en-US-Neural2-F` renders five terms
 to `build/tts-samples/` for comparison. Check pronunciation with Sensei before relying on a voice.
+
+#### Google credentials
+
+uke reads Google credentials only from its own gcloud config directory, `~/.config/gcloud-uke`
+(override with `UKE_GCLOUD_CONFIG`). Log in there once:
+
+```
+CLOUDSDK_CONFIG=~/.config/gcloud-uke gcloud auth application-default login
+```
+
+Don't use the plain `gcloud auth application-default login`: it overwrites
+`~/.config/gcloud/application_default_credentials.json`, which every project on the machine shares,
+and silently changes which identity their code runs as. For the same reason uke ignores that file and
+`GOOGLE_APPLICATION_CREDENTIALS`. No `set-quota-project` is needed; uke sends `UKE_GCP_PROJECT` as
+the quota project. If the file is missing, the google engine stops and prints the login command.
+
+The committed `.envrc` sets `CLOUDSDK_CONFIG` for direnv, so `gcloud` commands typed in this repo use
+the same directory. Put `UKE_GCP_PROJECT` in a gitignored `.env` next to it.
 
 ### Tests
 
