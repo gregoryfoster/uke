@@ -3,7 +3,7 @@ import json
 
 import pytest
 
-from uke.tts import GoogleEngine, TTSError, credentials_path, gcloud_config_dir
+from uke.tts import GoogleEngine, TTSError, credentials_path, gcloud_config_dir, login_command
 
 
 def write_adc(path, client_id):
@@ -52,3 +52,18 @@ def test_rejects_other_credential_types(env, monkeypatch):
     credentials_path().write_text(json.dumps({"type": "service_account"}))
     with pytest.raises(TTSError, match="service_account"):
         GoogleEngine(project="p").credentials()
+
+
+def test_refused_login_says_how_to_log_in_again(env, monkeypatch):
+    from google.auth.exceptions import RefreshError
+
+    class Revoked:
+        def list_voices(self, **kw):
+            raise RefreshError("invalid_grant: Token has been expired or revoked.")
+
+    engine = GoogleEngine(project="p")
+    engine._client = Revoked()
+    with pytest.raises(TTSError) as e:
+        engine.list_voices("ja-JP")
+    assert "invalid_grant" in str(e.value)
+    assert login_command() in str(e.value)
