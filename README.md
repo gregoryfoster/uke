@@ -60,6 +60,11 @@ Entries with `kana: null` (e.g. Juntai) get cards but no audio, and the build pr
 Japanese is synthesized from the `kana` field, never from romaji. Clips are cached in `build/cache/tts/`,
 so only new or changed text is synthesized.
 
+All-hiragana text gives the voice no word boundaries, so it can misread a long vowel: it read
+かたてこうさどり as "katateko… usadori", with a pause inside こうさ. When that happens, add `tts_kana`
+to the term or kata with the long vowel written as ー (`tts_kana: "かたてこーさどり"`). The voice reads
+`tts_kana`; cards still show `kana`. The validator checks that `tts_kana` is kana only.
+
 | `--engine` | Notes |
 | --- | --- |
 | `google` (default) | Google Cloud Text-to-Speech, voice Chirp 3 HD Kore in both languages. Set `UKE_GCP_PROJECT` (or `--gcp-project`) and log in once to uke's own gcloud config (see below). |

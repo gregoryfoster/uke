@@ -29,6 +29,7 @@ class Segment:
     """One spoken word of an entry: a term inside a kumi waza, or the whole word for a term or kata."""
     romaji: str
     kana: str | None
+    speech: str | None     # what the voice reads: tts_kana if set, else kana
     role: str | None       # term category when the segment is a kumi waza part
     gloss: str | None      # first English gloss of the part
     roots: list[RootUse]
@@ -41,6 +42,7 @@ class Entry:
     kind: str              # kumi_waza | kata | term
     romaji: str
     kana: str | None
+    speech: str | None     # what the voice reads: tts_kana if set, else kana
     kanji: str | None
     category: str          # term category, or "kumi waza" / "kata"
     glosses: list[str]
@@ -67,6 +69,11 @@ class Entry:
         else:
             text = self.glosses[0]
         return text[:1].upper() + text[1:]
+
+
+def speech_of(item: dict) -> str | None:
+    """Kana for the voice. tts_kana overrides kana where the engine misreads plain hiragana."""
+    return (item.get("tts_kana") or item.get("kana")) if item.get("kana") else None
 
 
 def _load(data: Path, name: str):
@@ -192,7 +199,7 @@ def load(repo: Path = REPO) -> Dataset:
 
     def term_segment(t, role=None):
         uses, ok = _root_uses(t["romaji"], t["roots"], roots)
-        return Segment(t["romaji"], t.get("kana"), role, t["gloss_en"][0], uses, ok)
+        return Segment(t["romaji"], t.get("kana"), speech_of(t), role, t["gloss_en"][0], uses, ok)
 
     entries: list[Entry] = []
     n = 0
@@ -213,11 +220,13 @@ def load(repo: Path = REPO) -> Dataset:
         parts = [terms[p] for p in k["parts"]]
         segs = [term_segment(t, role=t["category"]) for t in parts]
         kanas = [t.get("kana") for t in parts]
+        speeches = [speech_of(t) for t in parts]
         grades = need.get(("kumi_waza", k["id"]), [])
         entries.append(Entry(
             id=k["id"], kind="kumi_waza",
             romaji=" ".join(t["romaji"] for t in parts),
             kana="、".join(kanas) if all(kanas) else None,
+            speech="、".join(speeches) if all(speeches) else None,
             kanji=None, category="kumi waza",
             glosses=[", ".join(s.gloss for s in segs)],
             segments=segs, grades=grades, status=status(grades),
@@ -229,9 +238,9 @@ def load(repo: Path = REPO) -> Dataset:
         uses, ok = _root_uses(k["romaji"], k["roots"], roots)
         grades = need.get(("kata", k["id"]), [])
         entries.append(Entry(
-            id=k["id"], kind="kata", romaji=k["romaji"], kana=k.get("kana"), kanji=k.get("kanji"),
-            category="kata", glosses=k["gloss_en"],
-            segments=[Segment(k["romaji"], k.get("kana"), None, k["gloss_en"][0], uses, ok)],
+            id=k["id"], kind="kata", romaji=k["romaji"], kana=k.get("kana"), speech=speech_of(k),
+            kanji=k.get("kanji"), category="kata", glosses=k["gloss_en"],
+            segments=[Segment(k["romaji"], k.get("kana"), speech_of(k), None, k["gloss_en"][0], uses, ok)],
             grades=grades, status=status(grades),
             clip_url=clip.get(k["id"]) or clip.get("kata-all"), note=k.get("note"), order=n,
         ))
@@ -240,7 +249,8 @@ def load(repo: Path = REPO) -> Dataset:
     for t in terms.values():
         grades = need.get(("term", t["id"]), [])
         entries.append(Entry(
-            id=t["id"], kind="term", romaji=t["romaji"], kana=t.get("kana"), kanji=t.get("kanji"),
+            id=t["id"], kind="term", romaji=t["romaji"], kana=t.get("kana"), speech=speech_of(t),
+            kanji=t.get("kanji"),
             category=t["category"], glosses=t["gloss_en"], segments=[term_segment(t)],
             grades=grades, status=status(grades), clip_url=clip.get(t["id"]), note=t.get("note"), order=n,
         ))

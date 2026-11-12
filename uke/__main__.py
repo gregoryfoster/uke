@@ -12,7 +12,7 @@ from .data import load
 from .deck import build_deck
 from .tts import ENGINES, Synth, TTSError, concat, encode_mp3, make_engine
 
-SAMPLE = ["しょうめんうち", "かたてこうさどり", "いっきょう", "こてがえし", "りょうてどり、てんちなげ"]
+SAMPLE = ["しょうめんうち", "かたてこーさどり", "いっきょう", "こてがえし", "りょうてどり、てんちなげ"]
 SAMPLE_EN = "Straight strike to the head."
 
 

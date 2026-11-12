@@ -1,5 +1,7 @@
 """Audio: the Japanese clip for each card, and the commute loop for the study set.
 
+The voice reads each entry's `speech` (tts_kana if set, else kana), never romaji.
+
 Commute pattern, audio only: Japanese term, pause, each root (Japanese then English), the English
 meaning, pause. No tones, chimes or references to a screen, so it is safe to play while driving.
 """
@@ -23,25 +25,25 @@ def no_kana_warning(e: Entry) -> str:
 
 def card_audio(synth: Synth, e: Entry, dest: Path) -> Path | None:
     """The Japanese term alone, as played on the cards."""
-    if not e.kana:
+    if not e.speech:
         return None
     with tempfile.TemporaryDirectory() as tmp:
         wav = Path(tmp) / "a.wav"
-        concat([0.2, synth.clip(e.kana, "ja")], wav)
+        concat([0.2, synth.clip(e.speech, "ja")], wav)
         encode_mp3(wav, dest)
     return dest
 
 
 def commute_pieces(synth: Synth, e: Entry, recall: float, after: float) -> list:
     """Clips and pauses for one entry, or [] when it has no kana."""
-    if not e.kana:
+    if not e.speech:
         return []
-    pieces: list = [LEAD_IN, synth.clip(e.kana, "ja"), recall]
+    pieces: list = [LEAD_IN, synth.clip(e.speech, "ja"), recall]
     for seg in e.segments:
         single = len(seg.roots) == 1 and seg.roots[0].kana == seg.kana
         if e.kind == "kumi_waza" and single:
             # a part that is its own root (omote, katameru): the part and its gloss
-            pieces += [synth.clip(seg.kana, "ja"), ROOT_GAP, synth.clip(seg.gloss, "en"), BETWEEN_ROOTS]
+            pieces += [synth.clip(seg.speech, "ja"), ROOT_GAP, synth.clip(seg.gloss, "en"), BETWEEN_ROOTS]
             continue
         if single:
             continue  # the meaning below already covers it
