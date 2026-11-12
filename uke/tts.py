@@ -83,6 +83,10 @@ def credentials_path() -> Path:
     return gcloud_config_dir() / "application_default_credentials.json"
 
 
+def login_command() -> str:
+    return f"CLOUDSDK_CONFIG={gcloud_config_dir()} gcloud auth application-default login"
+
+
 class GoogleEngine(Engine):
     """Google Cloud Text-to-Speech.
 
@@ -101,9 +105,7 @@ class GoogleEngine(Engine):
     def credentials(self):
         path = credentials_path()
         if not path.is_file():
-            raise TTSError(
-                f"no uke Google credentials at {path}. Log in once with:\n"
-                f"  CLOUDSDK_CONFIG={gcloud_config_dir()} gcloud auth application-default login")
+            raise TTSError(f"no uke Google credentials at {path}. Log in once with:\n  {login_command()}")
         info = json.loads(path.read_text())
         kind = info.get("type")
         if kind == "authorized_user":
@@ -132,14 +134,28 @@ class GoogleEngine(Engine):
                 credentials=creds, transport="rest", client_options={"quota_project_id": self.project})
         return self._client
 
-    def render(self, text, lang, out):
+    def call(self, method: str, **kw):
+        """Call a client method, turning a refused login into a TTSError with the fix."""
+        from google.auth.exceptions import RefreshError
         client = self.client()
+        try:
+            return getattr(client, method)(**kw)
+        except RefreshError as e:
+            raise TTSError(
+                f"Google refused uke's login ({e.args[0] if e.args else e}). Log in again with:\n"
+                f"  {login_command()}\n"
+                "`gcloud auth application-default revoke` anywhere on this machine also revokes uke's "
+                "login when both use the same Google account.") from e
+
+    def render(self, text, lang, out):
+        self.client()
         tts = self._tts
         voice = self.voices[lang]
         params = {"audio_encoding": tts.AudioEncoding.LINEAR16, "sample_rate_hertz": RATE}
         if self.rates[lang] != 1.0:
             params["speaking_rate"] = self.rates[lang]
-        resp = client.synthesize_speech(
+        resp = self.call(
+            "synthesize_speech",
             input=tts.SynthesisInput(text=text),
             voice=tts.VoiceSelectionParams(language_code="-".join(voice.split("-")[:2]), name=voice),
             audio_config=tts.AudioConfig(**params),
@@ -149,7 +165,7 @@ class GoogleEngine(Engine):
         return path
 
     def list_voices(self, prefix: str) -> list[str]:
-        resp = self.client().list_voices(language_code=prefix)
+        resp = self.call("list_voices", language_code=prefix)
         return sorted(v.name for v in resp.voices)
 
 
