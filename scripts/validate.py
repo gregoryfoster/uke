@@ -4,12 +4,15 @@
 Usage: uv run scripts/validate.py
 Exit code 1 if any error is found; warnings never fail the run.
 """
+import datetime
 import re
 import sys
 from collections import Counter
 from pathlib import Path
 
 import yaml
+
+from uke.personal import personal_dir as uke_personal_dir
 
 DATA = Path(__file__).resolve().parent.parent / "data"
 errors, warnings = [], []
@@ -110,6 +113,68 @@ for pr in principles.values():
         if t not in terms:
             errors.append(f"principle '{pr['id']}': unknown term '{t}'")
 
+# personal data, when present: check references, never print content
+personal_dir = uke_personal_dir(DATA.parent)
+motto_ids = {m["id"] for m in p["motto"]}
+motto_texts = reflections = None
+
+
+def load_personal(name, key, kind):
+    """personal_dir/name's top-level key, or None if the file is absent or malformed (reported as an error).
+
+    Messages name the file and line only: a parse error or bad value can hold personal text.
+    """
+    path = personal_dir / name
+    if not path.exists():
+        return None
+    try:
+        with open(path, encoding="utf-8") as f:
+            doc = yaml.safe_load(f) or {}
+    except yaml.YAMLError as e:
+        mark = getattr(e, "problem_mark", None)
+        errors.append(f"personal {name}: not valid YAML" + (f" (line {mark.line + 1})" if mark else ""))
+        return None
+    except ValueError:  # PyYAML's date parsing, e.g. 2026-11-31
+        errors.append(f"personal {name}: has an impossible date (dates are YYYY-MM-DD)")
+        return None
+    except (OSError, UnicodeDecodeError):
+        errors.append(f"personal {name}: cannot be read as UTF-8 text")
+        return None
+    value = doc.get(key) if isinstance(doc, dict) else None
+    if value is None and isinstance(doc, dict):
+        return kind()
+    if not isinstance(value, kind):
+        errors.append(f"personal {name}: {key} must be a {'mapping' if kind is dict else 'list'}")
+        return None
+    return value
+
+
+def an_id(value, known):
+    """Whether value is one of the known ids. Errors never echo the value: it may be personal text."""
+    return isinstance(value, str) and value in known
+
+
+if personal_dir.exists():
+    motto_texts = load_personal("motto.yaml", "motto_text", dict)
+    for n, k in enumerate(motto_texts or {}, 1):
+        if not an_id(k, motto_ids):
+            errors.append(f"personal motto.yaml: key {n} is not a motto id")
+    reflections = load_personal("reflections.yaml", "reflections", list)
+    reflection_subjects = subjects - {"kata-all"}  # kata-all only groups media
+    for n, item in enumerate(reflections or [], 1):
+        where = f"personal reflections.yaml entry {n}"
+        if not isinstance(item, dict):
+            errors.append(f"{where}: not a mapping")
+            continue
+        if not an_id(item.get("subject"), reflection_subjects):
+            errors.append(f"{where}: subject is not a technique, kata or term id")
+        if item.get("principle") is not None and not an_id(item["principle"], principles):
+            errors.append(f"{where}: principle is not a principle id")
+        if not isinstance(item.get("date"), datetime.date):
+            errors.append(f"{where}: date must be YYYY-MM-DD")
+        if not item.get("text"):
+            warnings.append(f"{where}: text is empty")
+
 # ---- report ----
 def name(k):
     return " ".join(terms[p]["romaji"] for p in k["parts"])
@@ -124,13 +189,14 @@ basic = sorted((k for k in kumi.values() if k.get("basic_art")), key=lambda k: k
 print(f"roots {len(roots)} · terms {len(terms)} · kata {len(kata)} · kumi waza {len(kumi)} · media {len(media)}")
 print(f"roots awaiting Sensei: {sum(r['status'] != 'confirmed' for r in roots.values())}")
 print(f"kanji awaiting dictionary check: {sum(r.get('kanji_status') != 'verified' for r in roots.values())}")
-personal = DATA.parent / "personal" / "motto.yaml"
-if personal.exists():
-    with open(personal, encoding="utf-8") as f:
-        texts = (yaml.safe_load(f) or {}).get("motto_text", {})
-    print(f"motto lines still empty: {sum(not texts.get(m['id']) for m in p['motto'])}")
+if not personal_dir.exists():
+    print(f"personal data: not set up (uke personal init <url>, or copy personal.example/ to {personal_dir})")
 else:
-    print("motto text: not set up (copy personal.example/ to personal/)")
+    print(f"personal data: {personal_dir}")
+    if motto_texts is not None:
+        print(f"motto lines still empty: {sum(not motto_texts.get(i) for i in motto_ids)}")
+    if reflections is not None:
+        print(f"reflections: {len(reflections)}")
 print(f"\nstudy set ({' + '.join(study)}), plus the 8 Basic Arts in review:")
 for k in dict.fromkeys(study_kumi):
     flag = "" if k in covered else "   <- no clip"

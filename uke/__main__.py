@@ -1,7 +1,8 @@
-"""Command line: uke build deck|audio|all, uke voices, uke sample (also `python -m uke ...`)."""
+"""Command line: uke build deck|audio|all, uke voices, uke sample, uke personal (also `python -m uke ...`)."""
 from __future__ import annotations
 
 import argparse
+import datetime
 import os
 import sys
 from pathlib import Path
@@ -9,6 +10,7 @@ from pathlib import Path
 from . import REPO
 from .audio import build_commute
 from .data import load
+from . import personal
 from .deck import anki_search, build_deck, compare, manifest_path, read_manifest
 from .tts import ENGINES, Synth, TTSError, concat, encode_mp3, make_engine
 
@@ -39,7 +41,17 @@ def main(argv=None) -> int:
     engine_args(v)
     s = sub.add_parser("sample", help="render five sample terms to build/tts-samples/ to compare voices")
     engine_args(s)
+    pe = sub.add_parser("personal", help="where personal data lives, and syncing it with its private store")
+    psub = pe.add_subparsers(dest="action", required=True)
+    psub.add_parser("status", help="show the personal directory, its store and unsynced changes")
+    sy = psub.add_parser("sync", help="commit local changes, pull remote ones, push")
+    sy.add_argument("-m", "--message", help="commit message (default: uke personal sync <date>)")
+    ini = psub.add_parser("init", help="fetch your private store into the personal directory")
+    ini.add_argument("url", help="e.g. https://github.com/<you>/uke-personal.git")
     a = ap.parse_args(argv)
+
+    if a.cmd == "personal":
+        return personal_cmd(a)
 
     try:
         engine = make_engine(a.engine, a.ja_voice, a.en_voice, a.ja_rate, a.en_rate, a.gcp_project)
@@ -66,6 +78,30 @@ def main(argv=None) -> int:
 
         return build(a, synth)
     except TTSError as e:
+        print(f"error: {e}", file=sys.stderr)
+        return 1
+
+
+def personal_cmd(a) -> int:
+    path = personal.personal_dir()
+    try:
+        if a.action == "init":
+            store = personal.init(a.url, path)
+            print(f"personal data: {path} ({store.provider}, {store.remote()})")
+            return 0
+        if not path.exists():
+            print(f"personal data: not set up; uke looks in {path} ($UKE_PERSONAL to change).\n"
+                  "Run `uke personal init <url>` with your private repo, or copy personal.example/ there.")
+            return 0 if a.action == "status" else 1
+        store = personal.open_store(path)
+        if a.action == "status":
+            print(f"personal data: {path}\nstore: {store.provider}" + (f" ({store.remote()})" if store.remote() else ""))
+            pending = store.pending()
+            print(f"not synced: {len(pending)}" + "".join(f"\n  {line}" for line in pending))
+            return 0
+        print(store.sync(a.message or f"uke personal sync {datetime.date.today().isoformat()}"))
+        return 0
+    except personal.StoreError as e:
         print(f"error: {e}", file=sys.stderr)
         return 1
 

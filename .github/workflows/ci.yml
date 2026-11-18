@@ -17,6 +17,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0  # the personal-data guard checks every commit, not just the tip
 
       # setup-uv publishes no floating major tag (v10), only full versions.
       - uses: astral-sh/setup-uv@v10.3.3
@@ -29,6 +31,18 @@ jobs:
 
       - name: Install dependencies
         run: uv sync --locked
+
+      # This repo is public: fail if any commit adds personal data, even one a later commit deletes.
+      - name: No personal data
+        env:
+          BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          revs=HEAD
+          if [ -n "$BASE" ] && [ "$BASE" != 0000000000000000000000000000000000000000 ]; then
+            revs="$revs $(git rev-list "$BASE..$HEAD_SHA")"
+          fi
+          uv run scripts/check_public.py $revs
 
       - name: Validate data
         shell: bash

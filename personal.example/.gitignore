@@ -1,0 +1,8 @@
+# Keep OS and editor files out of the personal store: `uke personal sync` commits everything else.
+# Editor swap and backup files can hold unsaved drafts.
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+.#*
