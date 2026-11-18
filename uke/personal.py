@@ -18,17 +18,31 @@ from pathlib import Path
 from . import REPO
 
 
+def main_checkout(repo: Path) -> Path:
+    """The main checkout when repo is a linked git worktree (its .git is a file), else repo itself."""
+    dotgit = repo / ".git"
+    if dotgit.is_file():
+        line = dotgit.read_text(encoding="utf-8").strip()
+        if line.startswith("gitdir:"):
+            gitdir = (repo / line.removeprefix("gitdir:").strip()).resolve()
+            common = gitdir / "commondir"
+            if common.is_file():
+                return (gitdir / common.read_text(encoding="utf-8").strip()).resolve().parent
+    return repo
+
+
 def personal_dir(repo: Path = REPO) -> Path:
     """Where personal data lives locally: $UKE_PERSONAL, else personal/ next to data/.
 
-    A relative $UKE_PERSONAL is relative to the repo, not the current directory, so every command
-    finds the same folder wherever it runs from.
+    Both are taken from the main checkout, so every git worktree of uke shares one personal
+    directory, and a relative $UKE_PERSONAL means the same folder wherever a command runs from.
     """
+    base = main_checkout(repo)
     env = os.environ.get("UKE_PERSONAL")
     if not env:
-        return repo / "personal"
+        return base / "personal"
     path = Path(env).expanduser()
-    return (path if path.is_absolute() else repo / path).resolve()
+    return (path if path.is_absolute() else base / path).resolve()
 
 
 class StoreError(RuntimeError):
@@ -146,13 +160,23 @@ class GitStore(Store):
         except StoreError as e:
             if self.in_progress() != "rebase":
                 # not a conflict: offline, credentials, no upstream... say what git said
-                raise StoreError(f"{e}. Nothing was pushed{kept}.") from None
+                raise StoreError(f"{sentence(e)}. Nothing was pushed{kept}.") from None
             self.git("rebase", "--abort", check=False)
             raise StoreError(
                 f"the remote has changes that conflict with yours, so nothing was pushed{kept}. "
                 f"Resolve them with git in {self.path} (git pull --rebase), then sync again.") from None
-        self.git("push", "-q")
+        try:
+            self.git("push", "-q")
+        except StoreError as e:
+            # e.g. the phone pushed between our pull and push, or the credentials expired
+            raise StoreError(f"{sentence(e)}. Nothing was pushed, but your changes are committed locally "
+                             f"in {self.path}; run `uke personal sync` again.") from None
         return f"synced with {self.remote()}" + (" (committed local changes)" if committed else "")
+
+
+def sentence(e: Exception) -> str:
+    """An error's text without its final period, so more can follow it."""
+    return str(e).rstrip().rstrip(".")
 
 
 def run_git(args: list[str], check: bool = True) -> str:

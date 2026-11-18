@@ -57,6 +57,20 @@ def test_relative_personal_dir_is_relative_to_the_repo(tmp_path, monkeypatch):
         assert personal.personal_dir(repo) == (tmp_path / "uke-personal").resolve()
 
 
+def test_worktrees_share_the_main_checkouts_personal_dir(tmp_path, monkeypatch):
+    main_repo = tmp_path / "uke"
+    git(tmp_path, "init", "-q", "-b", "main", str(main_repo))
+    git(main_repo, "commit", "-q", "--allow-empty", "-m", "start")
+    wt = main_repo / ".claude" / "worktrees" / "session"
+    git(main_repo, "worktree", "add", "-q", "-b", "session", str(wt))
+    assert personal.main_checkout(wt) == main_repo.resolve()
+    monkeypatch.delenv("UKE_PERSONAL")
+    assert personal.personal_dir(wt) == main_repo.resolve() / "personal"
+    monkeypatch.setenv("UKE_PERSONAL", "../uke-personal")
+    assert personal.personal_dir(wt) == (tmp_path / "uke-personal").resolve()
+    assert personal.main_checkout(tmp_path / "not-a-repo") == tmp_path / "not-a-repo"
+
+
 @pytest.mark.parametrize("url, handled", [
     ("https://github.com/me/uke-personal.git", True),
     ("git@github.com:me/uke-personal.git", True),
@@ -212,6 +226,7 @@ def test_guard_passes_a_clean_repo(public):
     ("personal.example/motto.yaml", f"motto_text:\n  motto-1: {SECRET}: and more\n", "motto.yaml: not valid YAML"),
     ("personal.example/reflections.yaml", f"reflections:\n  - {{date: 2026-11-31, text: {SECRET}}}\n", "not valid YAML"),
     ("personal.example/motto.yaml", f'- "{SECRET}"\n', "must be a mapping"),
+    ("personal.example/motto.yaml", f'motto_text:\n  "{SECRET}": null\n', "motto_text keys must be motto ids"),
     ("personal.example/motto.yaml", f'motto_text:\n  motto-1: "{SECRET}"\n', "must stay null"),
     ("personal.example/reflections.yaml", f'reflections:\n  - {{text: "{SECRET}"}}\n', "must stay an empty list"),
 ])
@@ -316,8 +331,28 @@ def test_tests_never_see_real_personal_data():
     assert "personal data: not set up" in r.stdout
 
 
-def test_guard_skips_python_code(public):
+def test_guard_skips_only_test_code(public):
     commit(public, "tests/test_fake.py", 'FAKE = "reflections: []"\nmotto_text: int = 0\n')
+    assert guard(public).returncode == 0
+    commit(public, "data/motto.py", f'MOTTO = {{"motto_text": {{"motto-1": "{SECRET}"}}}}\n')
+    r = guard(public)
+    assert r.returncode == 1 and "data/motto.py: has a motto_text or reflections key" in r.stdout
+    assert SECRET not in r.stdout
+
+
+def test_guard_checks_the_whole_repo_from_a_subdirectory(public):
+    (public / "data" / "sub").mkdir()
+    commit(public, "personal/motto.yaml", "motto_text: {}\n")
+    commit(public, "data/notes.yaml", "reflections: []\n")
+    r = subprocess.run([sys.executable, str(REPO / "scripts" / "check_public.py")],
+                       cwd=public / "data" / "sub", capture_output=True, text=True)
+    assert r.returncode == 1
+    assert "personal/motto.yaml: personal data path" in r.stdout
+    assert "data/notes.yaml: has a motto_text or reflections key" in r.stdout
+
+
+def test_guard_allows_a_trailing_newline_in_gitkeep(public):
+    commit(public, "personal.example/captures/inbox/.gitkeep", "\n")
     assert guard(public).returncode == 0
 
 
@@ -329,6 +364,7 @@ def test_sync_reports_the_real_error_when_offline(remote, tmp_path):
         store.sync("offline edit")
     msg = str(e.value)
     assert "conflict" not in msg and "git pull failed" in msg
+    assert ".." not in msg.replace("...", "")
     assert "Nothing was pushed (your changes are committed locally)" in msg
     assert store.in_progress() is None
 
@@ -341,3 +377,20 @@ def test_status_sees_remote_changes(remote, tmp_path):
     assert "1 commit(s) on the remote not pulled" in laptop.pending()
     remote.rename(tmp_path / "moved.git")
     assert "could not reach the remote, so its new changes are unknown" in laptop.pending()
+
+
+def test_push_failure_says_changes_are_kept(remote, tmp_path):
+    store = personal.init(str(remote), tmp_path / "p")
+    hook = remote / "hooks" / "pre-receive"
+    hook.write_text("#!/bin/sh\necho rejected by a test hook. >&2\nexit 1\n", encoding="utf-8")
+    hook.chmod(0o755)
+    (store.path / "reflections.yaml").write_text("reflections: []  # edited\n", encoding="utf-8")
+    with pytest.raises(StoreError) as e:
+        store.sync("edit")
+    msg = str(e.value)
+    assert "git push failed" in msg and "your changes are committed locally" in msg
+    assert "run `uke personal sync` again" in msg
+    assert "1 commit(s) not pushed" in store.pending()
+    hook.unlink()
+    assert "synced" in store.sync("retry")
+    assert store.pending() == []

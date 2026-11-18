@@ -2,16 +2,18 @@
 """Fail if personal data is committed to this public repo.
 
 Usage: uv run scripts/check_public.py [REV ...]
-Checks each git revision given (default: HEAD and the staged index). CI passes every commit of a PR,
-because a file added in one commit and deleted in the next would still be public in the history.
+Checks each git revision given (default: HEAD and the staged index), across the whole repo wherever it
+is run from. CI passes every commit of a PR, because a file added in one commit and deleted in the next
+would still be public in the history.
 
 Personal data belongs in the private personal store (see README, "Personal data"):
 - no path under personal/ or captures/
-- personal.example/ holds only its template files, and they stay empty
+- personal.example/ holds only its template files, and they stay empty (motto keys are motto ids)
 - no motto_text or reflections key in any other text file: YAML, JSON, quoted or flow style.
-  Python files are skipped, since tests build fake personal files in code.
+  Only Python under tests/ is skipped, since the tests build fake personal files in code.
 Messages name files and keys only, never their content, and never echo a parse error (it quotes the line).
 """
+import re
 import subprocess
 import sys
 
@@ -21,14 +23,15 @@ TEMPLATE = "personal.example/"
 TEMPLATE_MOTTO = TEMPLATE + "motto.yaml"
 TEMPLATE_REFLECTIONS = TEMPLATE + "reflections.yaml"
 TEMPLATE_KEEP = TEMPLATE + "captures/inbox/.gitkeep"
-TEMPLATE_FILES = {TEMPLATE_MOTTO, TEMPLATE_REFLECTIONS, TEMPLATE + "README.md", TEMPLATE_KEEP}
+TEMPLATE_FILES = {TEMPLATE_MOTTO, TEMPLATE_REFLECTIONS, TEMPLATE + "README.md", TEMPLATE + ".gitignore", TEMPLATE_KEEP}
+MOTTO_ID = re.compile(r"motto-[0-9]+")
 # the key at a line start, after "- ", "{" or ",", optionally quoted: YAML block, flow and JSON styles
 PERSONAL_KEYS = r"""(^|[-{,[:space:]])["']?(motto_text|reflections)["']?[[:space:]]*:"""
 INDEX = ":index"
 
 
-def git(*args: str, ok=(0,)) -> str:
-    r = subprocess.run(["git", *args], capture_output=True, text=True)
+def git(*args: str, ok=(0,), cwd=None) -> str:
+    r = subprocess.run(["git", *args], capture_output=True, text=True, cwd=cwd or TOP)
     if r.returncode not in ok:
         raise SystemExit(f"git {' '.join(args)} failed: {r.stderr.strip()}")
     return r.stdout
@@ -43,7 +46,7 @@ def files(rev: str) -> list[str]:
 def with_personal_keys(rev: str) -> list[str]:
     """Text files at rev with a line that starts a motto_text or reflections key (one git process)."""
     where = ["--cached", "-E", "-e", PERSONAL_KEYS] if rev == INDEX else ["-E", "-e", PERSONAL_KEYS, rev]
-    out = git("grep", "-I", "-l", "-z", *where, "--", ".", ":(exclude)*.py", ok=(0, 1))
+    out = git("grep", "-I", "-l", "-z", *where, "--", ".", ":(exclude,glob)tests/**/*.py", ok=(0, 1))
     prefix = "" if rev == INDEX else f"{rev}:"
     return [p.removeprefix(prefix) for p in out.split("\0") if p]
 
@@ -80,12 +83,14 @@ def check(rev: str) -> list[str]:
         motto = template(rev, TEMPLATE_MOTTO, "motto_text", problems) or {}
         if not isinstance(motto, dict):
             problems.append(f"{TEMPLATE_MOTTO}: motto_text must be a mapping of motto ids to null")
+        elif not all(isinstance(k, str) and MOTTO_ID.fullmatch(k) for k in motto):
+            problems.append(f"{TEMPLATE_MOTTO}: motto_text keys must be motto ids (motto-1, motto-2, ...)")
         elif any(v is not None for v in motto.values()):
-            filled = [k for k, v in motto.items() if v is not None and isinstance(k, str) and k.startswith("motto-")]
-            problems.append(f"{TEMPLATE_MOTTO}: motto_text must stay null" + (f", filled: {', '.join(filled)}" if filled else ""))
+            filled = [k for k, v in motto.items() if v is not None]
+            problems.append(f"{TEMPLATE_MOTTO}: motto_text must stay null, filled: {', '.join(filled)}")
     if TEMPLATE_REFLECTIONS in paths and template(rev, TEMPLATE_REFLECTIONS, "reflections", problems):
         problems.append(f"{TEMPLATE_REFLECTIONS}: reflections must stay an empty list")
-    if TEMPLATE_KEEP in paths and read(rev, TEMPLATE_KEEP):
+    if TEMPLATE_KEEP in paths and read(rev, TEMPLATE_KEEP).strip():
         problems.append(f"{TEMPLATE_KEEP}: must stay empty")
     return problems
 
@@ -103,6 +108,9 @@ def main(revs: list[str]) -> int:
     print("OK: no personal data in the checked revisions.")
     return 0
 
+
+# every git command runs at the top of the work tree, so ls-tree, ls-files and grep see the whole repo
+TOP = git("rev-parse", "--show-toplevel", cwd=".").strip()
 
 if __name__ == "__main__":
     sys.exit(main(sys.argv[1:]))
