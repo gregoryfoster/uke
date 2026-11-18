@@ -51,9 +51,26 @@ uv run uke build all               # or: build deck, build audio
 | `build/uke.apkg` | Anki deck: one note per kumi waza entry, kata and term, three cards each (Japanese to meaning, English to Japanese, breakdown). Tagged `uke::study`, `uke::review` or `uke::later` and `grade::4kyu` etc., so filtered decks can pick the study set. |
 | `build/audio/study/*.mp3` | Commute audio, one file per study-set entry: Japanese term, pause, roots and English meaning, pause. Audio only. |
 | `build/audio/uke-study-loop.mp3` | All study-set entries in one file, plus `uke-study.m3u` |
+| `build/uke.manifest.json` | The deck's notes with a fingerprint of each, so the next build can say what changed |
 
 The study set is the next exam in `data/grades.yaml` (`profile.next_exam`) plus the grade above it.
 Entries with `kana: null` (e.g. Juntai) get cards but no audio, and the build prints a warning.
+
+### Updating the deck in Anki
+
+Rebuild, then import `uke.apkg` again: on Android, open it in AnkiDroid. Each note's id comes from its
+entry id in `data/`, so re-importing updates existing cards in place and keeps their review history.
+
+- **Changed audio:** card audio files are named by their content (`uke-term-shomenuchi-160d1508.mp3`),
+  so a fixed pronunciation gets a new file name and replaces the old sound. Anki would otherwise keep
+  a file it already has with the same name. Old files linger until you run Check Media and delete the unused ones
+  (AnkiDroid: the deck list's menu > Check media; desktop: Tools > Check Media).
+- **Removed or renamed entries:** re-importing never deletes cards. The build compares itself with the
+  previous build in the same folder and lists what was added, changed and removed. For each removed
+  entry it prints an Anki search such as `"deck:Uke::Terms" "Id:juntai"`; paste it into the Browse
+  window, then delete or suspend the note.
+- **Anki is read-only:** every field is overwritten on re-import, so anything typed into a card in
+  Anki is lost. Your own notes and reflections belong in your personal data, not in the deck.
 
 ### Text-to-speech
 
