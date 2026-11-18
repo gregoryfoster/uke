@@ -9,7 +9,7 @@ from pathlib import Path
 from . import REPO
 from .audio import build_commute
 from .data import load
-from .deck import build_deck
+from .deck import anki_search, build_deck, compare, manifest_path, read_manifest
 from .tts import ENGINES, Synth, TTSError, concat, encode_mp3, make_engine
 
 SAMPLE = ["しょうめんうち", "かたてこーさどり", "いっきょう", "こてがえし", "りょうてどり、てんちなげ"]
@@ -70,14 +70,32 @@ def main(argv=None) -> int:
         return 1
 
 
+def report_changes(before: dict | None, after: dict) -> None:
+    """What re-importing this deck does compared with the previous build in the same folder."""
+    if before is None:
+        print("since the last build: no earlier build here to compare with")
+        return
+    c = compare(before, after)
+    print(f"since the last build: {len(c.added)} added, {len(c.changed)} changed, {len(c.removed)} removed")
+    if c.removed:
+        print("removed from the deck, but re-importing leaves them in Anki; find each in the Browse window"
+              " and delete or suspend it:")
+        for k in c.removed:
+            e = before["notes"][k]
+            print(f"  {e['name']}: {anki_search(k, e)}")
+
+
 def build(a, synth: Synth) -> int:
     ds = load()
     warn: list[str] = []
     a.out.mkdir(parents=True, exist_ok=True)
     print(f"engine: {synth.engine.name} (ja {synth.engine.voices['ja']}, en {synth.engine.voices['en']})")
     if a.target in ("deck", "all"):
-        path = build_deck(ds, synth, a.out / "uke.apkg", warn)
+        apkg = a.out / "uke.apkg"
+        before = read_manifest(manifest_path(apkg))
+        path = build_deck(ds, synth, apkg, warn)
         print(f"deck: {path} ({len(ds.entries)} notes)")
+        report_changes(before, read_manifest(manifest_path(apkg)))
     if a.target in ("audio", "all"):
         made = build_commute(ds.study_set(), synth, a.out / "audio", warn, a.recall_pause, a.after_pause)
         print(f"commute audio: {len(made)} entries, loop at {a.out / 'audio' / 'uke-study-loop.mp3'}")

@@ -6,10 +6,16 @@
    Skipped for single-root words, where it would repeat card 1.
 
 Note GUIDs come from entry ids, so re-importing updates cards instead of duplicating them.
+Audio files are named by content, so changed audio replaces the old on re-import.
+Each build writes a manifest next to the .apkg; comparing manifests shows added, changed and removed notes.
 Kanji is stored but not shown until it is verified (Phase 3).
 """
 from __future__ import annotations
 
+import hashlib
+import json
+import shutil
+from dataclasses import dataclass, field
 from html import escape
 from pathlib import Path
 
@@ -167,19 +173,75 @@ def note_for(e: Entry, audio_name: str | None) -> genanki.Note:
                         guid=genanki.guid_for("uke", e.kind, e.id))
 
 
+def audio_name(e: Entry, mp3: bytes) -> str:
+    """Card audio is named by its content, so changed audio gets a new name.
+
+    Anki keeps a media file it already has under the same name, so a fixed pronunciation
+    would never reach the phone if the name stayed the same.
+    """
+    return f"uke-{e.kind}-{e.id}-{hashlib.sha1(mp3).hexdigest()[:8]}.mp3"
+
+
+def manifest_path(apkg: Path) -> Path:
+    return apkg.with_suffix(".manifest.json")
+
+
+def note_key(e: Entry) -> str:
+    return f"{e.kind}:{e.id}"
+
+
+def manifest_entry(e: Entry, note: genanki.Note, audio: str | None) -> dict:
+    content = "\x1f".join([*note.fields, " ".join(sorted(note.tags))])
+    return {"name": e.romaji, "deck": DECK_NAMES[e.kind],
+            "content": hashlib.sha1(content.encode("utf-8")).hexdigest()[:12], "audio": audio}
+
+
+def read_manifest(path: Path) -> dict | None:
+    if not path.exists():
+        return None
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+@dataclass
+class Changes:
+    added: list[str] = field(default_factory=list)      # manifest keys, "kind:id"
+    changed: list[str] = field(default_factory=list)
+    removed: list[str] = field(default_factory=list)
+
+
+def compare(old: dict, new: dict) -> Changes:
+    """What a re-import adds, updates and leaves behind, from two deck manifests."""
+    o, n = old["notes"], new["notes"]
+    return Changes(added=[k for k in n if k not in o],
+                   changed=[k for k in n if k in o and n[k]["content"] != o[k]["content"]],
+                   removed=[k for k in o if k not in n])
+
+
+def anki_search(key: str, entry: dict) -> str:
+    """Anki browser search that finds the note for a manifest entry."""
+    return f'"deck:{entry["deck"]}" "Id:{key.split(":", 1)[1]}"'
+
+
 def build_deck(ds: Dataset, synth: Synth, out: Path, warn: list[str]) -> Path:
+    """Write the .apkg and, next to it, a manifest of its notes for comparing builds."""
     media_dir = out.parent / "deck-media"
-    media_dir.mkdir(parents=True, exist_ok=True)
+    if media_dir.exists():
+        shutil.rmtree(media_dir)
+    media_dir.mkdir(parents=True)
     decks = {k: genanki.Deck(DECK_IDS[k], DECK_NAMES[k]) for k in DECK_IDS}
-    media = []
+    media, notes = [], {}
     for e in ds.entries:
-        name = f"uke-{e.kind}-{e.id}.mp3"
-        path = card_audio(synth, e, media_dir / name)
-        if path is None:
+        tmp = card_audio(synth, e, media_dir / "encoding.mp3")
+        name = None
+        if tmp is None:
             warn.append(no_kana_warning(e))
-            name = None
         else:
-            media.append(str(path))
-        decks[e.kind].add_note(note_for(e, name))
+            name = audio_name(e, tmp.read_bytes())
+            media.append(str(tmp.replace(media_dir / name)))
+        note = note_for(e, name)
+        decks[e.kind].add_note(note)
+        notes[note_key(e)] = manifest_entry(e, note, name)
     genanki.Package(list(decks.values()), media_files=media).write_to_file(str(out))
+    manifest_path(out).write_text(json.dumps({"version": 1, "notes": notes}, ensure_ascii=False, indent=1) + "\n",
+                                  encoding="utf-8")
     return out

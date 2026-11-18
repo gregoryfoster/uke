@@ -1,5 +1,6 @@
 """Build the deck and commute audio with the silent engine (no network, no voices) and check the output."""
 import json
+import re
 import shutil
 import sqlite3
 import subprocess
@@ -13,7 +14,7 @@ import pytest
 
 from uke.audio import build_commute
 from uke.data import STUDY, align, load
-from uke.deck import breakdown_prompt, build_deck
+from uke.deck import anki_search, breakdown_prompt, build_deck, compare, manifest_path, read_manifest
 from uke.tts import SilentEngine, Synth, duration
 
 REPO = Path(__file__).resolve().parents[1]
@@ -175,3 +176,55 @@ def test_validator_rejects_bad_tts_kana(tmp_path):
     r = subprocess.run([sys.executable, str(tmp_path / "scripts" / "validate.py")], capture_output=True, text=True)
     assert r.returncode == 1
     assert "tts_kana must be kana only" in r.stdout + r.stderr
+
+
+def test_audio_is_named_by_content(built, anki):
+    manifest = read_manifest(manifest_path(built.apkg))
+    assert set(manifest["notes"]) == {f"{e.kind}:{e.id}" for e in built.ds.entries}
+    for e in built.ds.entries:
+        audio = manifest["notes"][f"{e.kind}:{e.id}"]["audio"]
+        if e.speech:
+            assert re.fullmatch(rf"uke-{e.kind}-{re.escape(e.id)}-[0-9a-f]{{8}}\.mp3", audio), audio
+            assert audio in anki.media
+            assert note(anki, e)[0][10] == f"[sound:{audio}]"
+        else:
+            assert audio is None
+    assert len(anki.media) == sum(1 for e in built.ds.entries if e.speech)
+
+
+def test_changed_speech_changes_only_its_audio(built, tmp_path):
+    """A tts_kana fix renames the audio of the entries that speak it, so Anki takes the new sound."""
+    shutil.copytree(built.root / "data", tmp_path / "data")
+    terms = tmp_path / "data" / "terms.yaml"
+    text = terms.read_text(encoding="utf-8")
+    assert 'tts_kana: "かたてこーさどり"' in text
+    terms.write_text(text.replace('tts_kana: "かたてこーさどり"', 'tts_kana: "かたてこーさどりー、どり"'),
+                     encoding="utf-8")
+    ds = load(tmp_path)
+    synth = Synth(SilentEngine(), tmp_path / "build" / "cache")
+    apkg = build_deck(ds, synth, tmp_path / "build" / "uke.apkg", [])
+
+    old, new = read_manifest(manifest_path(built.apkg)), read_manifest(manifest_path(apkg))
+    c = compare(old, new)
+    assert not c.added and not c.removed
+    assert "term:katatekosadori" in c.changed
+    assert all("katatekosadori" in k for k in c.changed), c.changed
+    for k in c.changed:
+        assert new["notes"][k]["audio"] != old["notes"][k]["audio"]
+    for k in set(new["notes"]) - set(c.changed):
+        assert new["notes"][k] == old["notes"][k], k
+
+
+def test_rebuild_reports_no_changes(built, tmp_path):
+    apkg = build_deck(built.ds, built.synth, tmp_path / "uke.apkg", [])
+    c = compare(read_manifest(manifest_path(built.apkg)), read_manifest(manifest_path(apkg)))
+    assert c.added == c.changed == c.removed == []
+
+
+def test_removed_entries_are_reported_with_a_search(built):
+    old = read_manifest(manifest_path(built.apkg))
+    new = {"notes": {k: v for k, v in old["notes"].items() if k != "term:juntai"}}
+    c = compare(old, new)
+    assert c.removed == ["term:juntai"] and c.added == c.changed == []
+    assert anki_search("term:juntai", old["notes"]["term:juntai"]) == '"deck:Uke::Terms" "Id:juntai"'
+    assert compare(new, old).added == ["term:juntai"]
