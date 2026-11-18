@@ -22,12 +22,14 @@ Built for one student (currently 5th kyu) first, dojo mates later.
   Never mark either as confirmed or verified without the user saying so.
 - Never invent kanji. If unsure, set `kana`/`kanji` to null with a `note`, as with Juntai.
 - This repo is public. Never commit motto text, reflections, voice notes or other personal practice data.
-  Those live in `personal/` (gitignored); `personal.example/` shows the shape. Code must run when `personal/` is absent.
+  Those live in a private store (first provider: a private GitHub repo, default name `uke-personal`), synced
+  into the directory `UKE_PERSONAL` names, else `personal/` (gitignored); `personal.example/` shows the shape.
+  Code must run when that directory is absent, and must never print personal content.
 - Never write motto text yourself; only the user pastes it.
 - Kumi waza are composed from term ids in `parts`; one entry per direction (omote/ura) so each is recalled separately.
 
 ## Before committing
-Run `uv run scripts/validate.py`. It must exit 0. Mention any new warnings in the PR description.
+Run `uv run scripts/validate.py` and `uv run scripts/check_public.py`. Both must exit 0. Mention any new warnings in the PR description.
 
 ## Phases
 - Phase 0 (now): data files, roots table, validator.

@@ -1,0 +1,205 @@
+"""Personal data: where it is read from, syncing it with a git store, and keeping it out of this repo.
+
+Everything runs on local temporary repos; no network and no real personal data.
+"""
+import shutil
+import subprocess
+import sys
+from pathlib import Path
+
+import pytest
+
+from uke import personal
+from uke.__main__ import main
+
+REPO = Path(__file__).resolve().parents[1]
+SECRET = "a line only the student writes"
+
+
+@pytest.fixture(autouse=True)
+def git_identity(monkeypatch):
+    for k in ("AUTHOR", "COMMITTER"):
+        monkeypatch.setenv(f"GIT_{k}_NAME", "test")
+        monkeypatch.setenv(f"GIT_{k}_EMAIL", "test@example.invalid")
+    monkeypatch.delenv("UKE_PERSONAL", raising=False)
+
+
+def git(cwd, *args):
+    return subprocess.run(["git", "-C", str(cwd), *args], capture_output=True, text=True, check=True).stdout
+
+
+@pytest.fixture
+def remote(tmp_path):
+    """A bare repo seeded from personal.example/, standing in for the private GitHub repo."""
+    seed = tmp_path / "seed"
+    shutil.copytree(REPO / "personal.example", seed)
+    git(tmp_path, "init", "-q", "-b", "main", str(seed))
+    git(seed, "add", "-A")
+    git(seed, "commit", "-q", "-m", "seed")
+    bare = tmp_path / "remote.git"
+    git(tmp_path, "clone", "-q", "--bare", str(seed), str(bare))
+    return bare
+
+
+def test_personal_dir_defaults_to_repo_and_follows_env(tmp_path, monkeypatch):
+    assert personal.personal_dir(tmp_path) == tmp_path / "personal"
+    monkeypatch.setenv("UKE_PERSONAL", str(tmp_path / "anywhere" / "my-data"))
+    assert personal.personal_dir(tmp_path) == (tmp_path / "anywhere" / "my-data").resolve()
+
+
+def test_status_without_personal_data(tmp_path, monkeypatch, capsys):
+    monkeypatch.setenv("UKE_PERSONAL", str(tmp_path / "absent"))
+    assert main(["personal", "status"]) == 0
+    assert "not set up" in capsys.readouterr().out
+    assert main(["personal", "sync"]) == 1
+
+
+def test_plain_directory_is_a_local_store(tmp_path):
+    store = personal.open_store(tmp_path)
+    assert store.provider == "local" and store.remote() is None and store.pending() == []
+
+
+def test_gcs_is_not_supported_yet(tmp_path):
+    with pytest.raises(personal.StoreError, match="not supported yet"):
+        personal.init("gs://bucket/uke", tmp_path / "p")
+    assert not (tmp_path / "p").exists()
+
+
+def test_init_refuses_an_existing_directory(remote, tmp_path):
+    (tmp_path / "p").mkdir()
+    with pytest.raises(personal.StoreError, match="already exists"):
+        personal.init(str(remote), tmp_path / "p")
+
+
+def test_git_store_round_trip(remote, tmp_path, monkeypatch, capsys):
+    laptop = tmp_path / "laptop"
+    monkeypatch.setenv("UKE_PERSONAL", str(laptop))
+    assert main(["personal", "init", str(remote)]) == 0
+    store = personal.open_store(laptop)
+    assert store.provider == "git" and store.remote() == str(remote)
+    assert (laptop / "captures" / "inbox").is_dir()
+
+    # an edit made elsewhere (github.com from the phone) ...
+    phone = personal.init(str(remote), tmp_path / "phone")
+    (phone.path / "captures" / "inbox" / "2026-11-17.txt").write_text("ikkyo omote", encoding="utf-8")
+    phone.sync("capture")
+
+    # ... and a local one, both arrive in one sync
+    (laptop / "reflections.yaml").write_text(
+        f'reflections:\n  - {{subject: shomenuchi, date: 2026-11-17, text: "{SECRET}"}}\n', encoding="utf-8")
+    assert store.pending()
+    capsys.readouterr()
+    assert main(["personal", "status"]) == 0
+    assert SECRET not in capsys.readouterr().out
+    assert main(["personal", "sync", "-m", "reflection"]) == 0
+    assert store.pending() == []
+    assert (laptop / "captures" / "inbox" / "2026-11-17.txt").exists()
+    assert "reflection" in git(remote, "log", "--format=%s", "-1")
+
+
+def run_validate(tmp_path, personal_dir):
+    env = {"UKE_PERSONAL": str(personal_dir), "PATH": ""}
+    return subprocess.run([sys.executable, str(REPO / "scripts" / "validate.py")],
+                          capture_output=True, text=True, env=env)
+
+
+def write_personal(d: Path, reflections: str, motto: str = "motto-1: null"):
+    d.mkdir(parents=True, exist_ok=True)
+    (d / "motto.yaml").write_text(f"motto_text:\n  {motto}\n", encoding="utf-8")
+    (d / "reflections.yaml").write_text(f"reflections:\n{reflections}", encoding="utf-8")
+
+
+def test_validator_checks_personal_data_without_printing_it(tmp_path):
+    d = tmp_path / "p"
+    write_personal(d, f'  - {{subject: shomenuchi, date: 2026-11-17, principle: p-ki-heart-mind, text: "{SECRET}"}}\n',
+                   motto=f'motto-1: "{SECRET}"')
+    r = run_validate(tmp_path, d)
+    assert r.returncode == 0, r.stdout + r.stderr
+    assert "reflections: 1" in r.stdout and "motto lines still empty: 7" in r.stdout
+    assert SECRET not in r.stdout + r.stderr
+
+
+@pytest.mark.parametrize("line, error", [
+    ('  - {subject: no-such-technique, date: 2026-11-17, text: "x"}', "unknown subject 'no-such-technique'"),
+    ('  - {subject: shomenuchi, date: 2026-11-17, principle: p-nope, text: "x"}', "unknown principle 'p-nope'"),
+    ('  - {subject: shomenuchi, date: yesterday, text: "x"}', "date must be YYYY-MM-DD"),
+])
+def test_validator_rejects_bad_personal_references(tmp_path, line, error):
+    d = tmp_path / "p"
+    write_personal(d, line + "\n")
+    r = run_validate(tmp_path, d)
+    assert r.returncode == 1
+    assert error in r.stdout
+
+
+def test_validator_rejects_unknown_motto_id(tmp_path):
+    d = tmp_path / "p"
+    write_personal(d, "  []\n", motto=f'motto-99: "{SECRET}"')
+    r = run_validate(tmp_path, d)
+    assert r.returncode == 1 and "unknown motto id 'motto-99'" in r.stdout
+    assert SECRET not in r.stdout
+
+
+@pytest.fixture
+def public(tmp_path):
+    """A small copy of this repo's layout under git, for the personal-data guard."""
+    root = tmp_path / "public"
+    (root / "data").mkdir(parents=True)
+    shutil.copytree(REPO / "personal.example", root / "personal.example")
+    (root / "data" / "terms.yaml").write_text("terms: []\n", encoding="utf-8")
+    git(tmp_path, "init", "-q", "-b", "main", str(root))
+    git(root, "add", "-A")
+    git(root, "commit", "-q", "-m", "clean")
+    return root
+
+
+def guard(root, *revs):
+    return subprocess.run([sys.executable, str(REPO / "scripts" / "check_public.py"), *revs],
+                          cwd=root, capture_output=True, text=True)
+
+
+def commit(root, path, text, msg="change"):
+    f = root / path
+    f.parent.mkdir(parents=True, exist_ok=True)
+    f.write_text(text, encoding="utf-8")
+    git(root, "add", "-f", path)
+    git(root, "commit", "-q", "-m", msg)
+    return git(root, "rev-parse", "HEAD").strip()
+
+
+def test_guard_passes_a_clean_repo(public):
+    r = guard(public)
+    assert r.returncode == 0, r.stdout
+
+
+@pytest.mark.parametrize("path, text, problem", [
+    ("personal/motto.yaml", "motto_text: {}\n", "personal data path"),
+    ("captures/2026-11-17.yaml", "date: 2026-11-17\n", "personal data path"),
+    ("data/notes.yaml", f'motto_text:\n  motto-1: "{SECRET}"\n', "has a motto_text key"),
+    ("personal.example/motto.yaml", f'motto_text:\n  motto-1: "{SECRET}"\n', "must stay null"),
+    ("personal.example/reflections.yaml", f'reflections:\n  - {{text: "{SECRET}"}}\n', "must stay an empty list"),
+])
+def test_guard_rejects_personal_data(public, path, text, problem):
+    commit(public, path, text)
+    r = guard(public)
+    assert r.returncode == 1 and problem in r.stdout
+    assert SECRET not in r.stdout
+
+
+def test_guard_catches_data_deleted_in_a_later_commit(public):
+    base = git(public, "rev-parse", "HEAD").strip()
+    commit(public, "personal/reflections.yaml", "reflections: []\n", "oops")
+    git(public, "rm", "-q", "personal/reflections.yaml")
+    git(public, "commit", "-q", "-m", "remove")
+    assert guard(public, "HEAD").returncode == 0
+    revs = git(public, "rev-list", f"{base}..HEAD").split()
+    r = guard(public, "HEAD", *revs)
+    assert r.returncode == 1 and "personal/reflections.yaml" in r.stdout
+
+
+def test_guard_checks_staged_changes(public):
+    (public / "personal").mkdir()
+    (public / "personal" / "motto.yaml").write_text("motto_text: {}\n", encoding="utf-8")
+    git(public, "add", "-f", "personal/motto.yaml")
+    r = guard(public)
+    assert r.returncode == 1 and "staged changes" in r.stdout

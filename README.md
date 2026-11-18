@@ -15,8 +15,9 @@ the movement, and the principle behind each technique.
 | `data/media.yaml` | Video links from the dojo criteria |
 | `data/principles.yaml` | Motto line themes and dojo principles |
 | `data/sources.yaml` | The documents everything cites |
-| `personal.example/` | Templates for personal data (motto text, reflections); copy to `personal/`, which git ignores |
+| `personal.example/` | The shape of your personal data (motto text, reflections, captures), which lives in a private store, never here |
 | `scripts/validate.py` | Checks references and reports the study set and review status |
+| `scripts/check_public.py` | Fails if personal data is committed to this public repo |
 
 ## Setup
 
@@ -31,6 +32,37 @@ uv sync
 
 ```
 uv run scripts/validate.py
+```
+
+## Personal data
+
+Motto text, your own reflections and post-class captures are personal, and this repo is public.
+They live in a private store that uke syncs into a local directory, shaped like `personal.example/`.
+uke reads that directory from `UKE_PERSONAL`, or from `personal/` in this checkout (gitignored), and
+everything works without it.
+
+A private GitHub repo is the first supported store; any repo name works. To set one up, create an
+empty private repo (e.g. `uke-personal`), push the contents of `personal.example/` to it, then:
+
+```
+uv run uke personal init https://github.com/<you>/uke-personal.git   # clones into the personal directory
+uv run uke personal status                                          # where it is, and what is not synced
+uv run uke personal sync                                            # commit local changes, pull, push
+```
+
+To keep it somewhere other than `personal/`, set `UKE_PERSONAL` (e.g. in `.env`) before `init`.
+On the phone, add or edit files in the private repo on github.com (Add file > Create new file), for
+example a voice-memo transcript in `captures/inbox/`; the next `uke personal sync` brings it down.
+Other stores, such as a Google Cloud Storage bucket, are not supported yet; the code is ready for them
+(`uke/personal.py`).
+
+The validator checks personal files when present (known subjects, principle and motto ids, dates)
+and prints counts only, never their content. CI runs `scripts/check_public.py` on every commit of a
+PR and fails if personal data appears: a path under `personal/` or `captures/`, a `motto_text` key
+outside `personal.example/`, or a filled-in template. Run it before committing:
+
+```
+uv run scripts/check_public.py
 ```
 
 ## Review status
