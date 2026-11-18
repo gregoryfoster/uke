@@ -1,0 +1,72 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      # setup-uv publishes no floating major tag (v10), only full versions.
+      - uses: astral-sh/setup-uv@v10.3.3
+        with:
+          enable-cache: true
+
+      # The build tests skip without ffmpeg; install it so they run.
+      - name: Install ffmpeg
+        run: sudo apt-get update -q && sudo apt-get install -y -q ffmpeg
+
+      - name: Install dependencies
+        run: uv sync --locked
+
+      - name: Validate data
+        shell: bash
+        run: |
+          set +e
+          uv run scripts/validate.py > validate.txt 2>&1
+          status=$?
+          set -e
+          cat validate.txt
+
+          # Warnings never fail the run, so surface them where a reviewer will see them.
+          grep '^warning: ' validate.txt | sed 's/^warning: //' > warnings.txt || true
+          while IFS= read -r w; do echo "::warning title=validator::$w"; done < warnings.txt
+
+          {
+            echo "## Validator"
+            if [ "$status" -ne 0 ]; then
+              echo "**Failed:** broken references."
+              echo '```'
+              sed -n '/^ERRORS:/,$p' validate.txt
+              echo '```'
+            else
+              echo "OK: no broken references."
+            fi
+            echo
+            echo "### Warnings ($(wc -l < warnings.txt | tr -d ' '))"
+            sed 's/^/- /' warnings.txt
+            echo
+            echo "<details><summary>Full output</summary>"
+            echo
+            echo '```'
+            cat validate.txt
+            echo '```'
+            echo "</details>"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          exit $status
+
+      # Tests use the silent TTS engine, so no credentials are needed.
+      - name: Run tests
+        run: uv run pytest
