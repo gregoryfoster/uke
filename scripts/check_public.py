@@ -7,24 +7,28 @@ because a file added in one commit and deleted in the next would still be public
 
 Personal data belongs in the private personal store (see README, "Personal data"):
 - no path under personal/ or captures/
-- no motto_text key outside personal.example/motto.yaml, whose values must all stay null
-- personal.example/reflections.yaml must keep an empty list
+- personal.example/ holds only its template files, and they stay empty
+- no motto_text or reflections key in any other text file
 Messages name files and keys only, never their content.
 """
-import re
 import subprocess
 import sys
 
 import yaml
 
-TEMPLATE_MOTTO = "personal.example/motto.yaml"
-TEMPLATE_REFLECTIONS = "personal.example/reflections.yaml"
-MOTTO_KEY = re.compile(r"^\s*motto_text\s*:", re.M)
+TEMPLATE = "personal.example/"
+TEMPLATE_MOTTO = TEMPLATE + "motto.yaml"
+TEMPLATE_REFLECTIONS = TEMPLATE + "reflections.yaml"
+TEMPLATE_FILES = {TEMPLATE_MOTTO, TEMPLATE_REFLECTIONS, TEMPLATE + "README.md", TEMPLATE + "captures/inbox/.gitkeep"}
+PERSONAL_KEYS = r"^[[:space:]]*(motto_text|reflections)[[:space:]]*:"
 INDEX = ":index"
 
 
-def git(*args: str) -> str:
-    return subprocess.run(["git", *args], capture_output=True, text=True, check=True).stdout
+def git(*args: str, ok=(0,)) -> str:
+    r = subprocess.run(["git", *args], capture_output=True, text=True)
+    if r.returncode not in ok:
+        raise SystemExit(f"git {' '.join(args)} failed: {r.stderr.strip()}")
+    return r.stdout
 
 
 def files(rev: str) -> list[str]:
@@ -33,12 +37,16 @@ def files(rev: str) -> list[str]:
     return git("ls-tree", "-r", "-z", "--name-only", rev).split("\0")[:-1]
 
 
+def with_personal_keys(rev: str) -> list[str]:
+    """Text files at rev with a line that starts a motto_text or reflections key (one git process)."""
+    where = ["--cached", "-E", "-e", PERSONAL_KEYS] if rev == INDEX else ["-E", "-e", PERSONAL_KEYS, rev]
+    out = git("grep", "-I", "-l", "-z", *where, ok=(0, 1))
+    prefix = "" if rev == INDEX else f"{rev}:"
+    return [p.removeprefix(prefix) for p in out.split("\0") if p]
+
+
 def read(rev: str, path: str) -> str:
-    spec = f":{path}" if rev == INDEX else f"{rev}:{path}"
-    try:
-        return git("show", spec)
-    except subprocess.CalledProcessError:
-        return ""
+    return git("show", f":{path}" if rev == INDEX else f"{rev}:{path}")
 
 
 def check(rev: str) -> list[str]:
@@ -47,13 +55,14 @@ def check(rev: str) -> list[str]:
     for path in paths:
         if path.startswith(("personal/", "captures/")):
             problems.append(f"{path}: personal data path")
-    text_paths = [p for p in paths if p.endswith((".yaml", ".yml", ".json", ".md", ".txt"))]
-    for path in text_paths:
-        if path != TEMPLATE_MOTTO and MOTTO_KEY.search(read(rev, path)):
-            problems.append(f"{path}: has a motto_text key")
+        elif path.startswith(TEMPLATE) and path not in TEMPLATE_FILES:
+            problems.append(f"{path}: not part of the personal.example/ template")
+    for path in with_personal_keys(rev):
+        if path not in (TEMPLATE_MOTTO, TEMPLATE_REFLECTIONS):
+            problems.append(f"{path}: has a motto_text or reflections key")
     if TEMPLATE_MOTTO in paths:
         motto = (yaml.safe_load(read(rev, TEMPLATE_MOTTO)) or {}).get("motto_text") or {}
-        filled = [k for k, v in motto.items() if v is not None]
+        filled = [str(k) for k, v in motto.items() if v is not None] if isinstance(motto, dict) else ["(not a mapping)"]
         if filled:
             problems.append(f"{TEMPLATE_MOTTO}: motto_text must stay null, filled: {', '.join(filled)}")
     if TEMPLATE_REFLECTIONS in paths:

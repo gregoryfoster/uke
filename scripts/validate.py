@@ -5,13 +5,14 @@ Usage: uv run scripts/validate.py
 Exit code 1 if any error is found; warnings never fail the run.
 """
 import datetime
-import os
 import re
 import sys
 from collections import Counter
 from pathlib import Path
 
 import yaml
+
+from uke.personal import personal_dir as uke_personal_dir
 
 DATA = Path(__file__).resolve().parent.parent / "data"
 errors, warnings = [], []
@@ -113,47 +114,62 @@ for pr in principles.values():
             errors.append(f"principle '{pr['id']}': unknown term '{t}'")
 
 # personal data, when present: check references, never print content
-personal_dir = Path(os.environ["UKE_PERSONAL"]).expanduser() if os.environ.get("UKE_PERSONAL") else DATA.parent / "personal"
+personal_dir = uke_personal_dir(DATA.parent)
 motto_ids = {m["id"] for m in p["motto"]}
 motto_texts = reflections = None
 
 
-def load_personal(name):
+def load_personal(name, key, kind):
+    """personal_dir/name's top-level key, or None if the file is absent or malformed (reported as an error).
+
+    Messages name the file and line only: a parse error or bad value can hold personal text.
+    """
     path = personal_dir / name
     if not path.exists():
         return None
     try:
         with open(path, encoding="utf-8") as f:
-            return yaml.safe_load(f) or {}
+            doc = yaml.safe_load(f) or {}
     except yaml.YAMLError as e:
         mark = getattr(e, "problem_mark", None)
         errors.append(f"personal {name}: not valid YAML" + (f" (line {mark.line + 1})" if mark else ""))
         return None
+    except (OSError, UnicodeDecodeError):
+        errors.append(f"personal {name}: cannot be read as UTF-8 text")
+        return None
+    value = doc.get(key) if isinstance(doc, dict) else None
+    if value is None and isinstance(doc, dict):
+        return kind()
+    if not isinstance(value, kind):
+        errors.append(f"personal {name}: {key} must be a {'mapping' if kind is dict else 'list'}")
+        return None
+    return value
+
+
+def an_id(value, known):
+    """Whether value is one of the known ids. Errors never echo the value: it may be personal text."""
+    return isinstance(value, str) and value in known
 
 
 if personal_dir.exists():
-    m = load_personal("motto.yaml")
-    if m is not None:
-        motto_texts = m.get("motto_text") or {}
-        for k in motto_texts:
-            if k not in motto_ids:
-                errors.append(f"personal motto.yaml: unknown motto id '{k}'")
-    r = load_personal("reflections.yaml")
-    if r is not None:
-        reflections = r.get("reflections") or []
-        for n, item in enumerate(reflections, 1):
-            where = f"personal reflections.yaml entry {n}"
-            if not isinstance(item, dict):
-                errors.append(f"{where}: not a mapping")
-                continue
-            if item.get("subject") not in subjects:
-                errors.append(f"{where}: unknown subject '{item.get('subject')}'")
-            if item.get("principle") is not None and item["principle"] not in principles:
-                errors.append(f"{where}: unknown principle '{item['principle']}'")
-            if not isinstance(item.get("date"), datetime.date):
-                errors.append(f"{where}: date must be YYYY-MM-DD")
-            if not item.get("text"):
-                warnings.append(f"{where}: text is empty")
+    motto_texts = load_personal("motto.yaml", "motto_text", dict)
+    for n, k in enumerate(motto_texts or {}, 1):
+        if not an_id(k, motto_ids):
+            errors.append(f"personal motto.yaml: key {n} is not a motto id")
+    reflections = load_personal("reflections.yaml", "reflections", list)
+    for n, item in enumerate(reflections or [], 1):
+        where = f"personal reflections.yaml entry {n}"
+        if not isinstance(item, dict):
+            errors.append(f"{where}: not a mapping")
+            continue
+        if not an_id(item.get("subject"), subjects - {"kata-all"}):
+            errors.append(f"{where}: subject is not a technique, kata or term id")
+        if item.get("principle") is not None and not an_id(item["principle"], principles):
+            errors.append(f"{where}: principle is not a principle id")
+        if not isinstance(item.get("date"), datetime.date):
+            errors.append(f"{where}: date must be YYYY-MM-DD")
+        if not item.get("text"):
+            warnings.append(f"{where}: text is empty")
 
 # ---- report ----
 def name(k):

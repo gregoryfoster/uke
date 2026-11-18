@@ -10,6 +10,7 @@ from pathlib import Path
 import pytest
 
 from uke import personal
+from uke.personal import StoreError
 from uke.__main__ import main
 
 REPO = Path(__file__).resolve().parents[1]
@@ -21,7 +22,6 @@ def git_identity(monkeypatch):
     for k in ("AUTHOR", "COMMITTER"):
         monkeypatch.setenv(f"GIT_{k}_NAME", "test")
         monkeypatch.setenv(f"GIT_{k}_EMAIL", "test@example.invalid")
-    monkeypatch.delenv("UKE_PERSONAL", raising=False)
 
 
 def git(cwd, *args):
@@ -42,6 +42,7 @@ def remote(tmp_path):
 
 
 def test_personal_dir_defaults_to_repo_and_follows_env(tmp_path, monkeypatch):
+    monkeypatch.delenv("UKE_PERSONAL")
     assert personal.personal_dir(tmp_path) == tmp_path / "personal"
     monkeypatch.setenv("UKE_PERSONAL", str(tmp_path / "anywhere" / "my-data"))
     assert personal.personal_dir(tmp_path) == (tmp_path / "anywhere" / "my-data").resolve()
@@ -120,8 +121,11 @@ def test_validator_checks_personal_data_without_printing_it(tmp_path):
 
 
 @pytest.mark.parametrize("line, error", [
-    ('  - {subject: no-such-technique, date: 2026-11-17, text: "x"}', "unknown subject 'no-such-technique'"),
-    ('  - {subject: shomenuchi, date: 2026-11-17, principle: p-nope, text: "x"}', "unknown principle 'p-nope'"),
+    ('  - {subject: no-such-technique, date: 2026-11-17, text: "x"}', "subject is not a technique, kata or term id"),
+    (f'  - {{subject: "{SECRET}", date: 2026-11-17, text: "x"}}', "subject is not a technique, kata or term id"),
+    ('  - {subject: [shomenuchi], date: 2026-11-17, text: "x"}', "subject is not a technique, kata or term id"),
+    ('  - {subject: kata-all, date: 2026-11-17, text: "x"}', "subject is not a technique, kata or term id"),
+    ('  - {subject: shomenuchi, date: 2026-11-17, principle: p-nope, text: "x"}', "principle is not a principle id"),
     ('  - {subject: shomenuchi, date: yesterday, text: "x"}', "date must be YYYY-MM-DD"),
 ])
 def test_validator_rejects_bad_personal_references(tmp_path, line, error):
@@ -130,13 +134,14 @@ def test_validator_rejects_bad_personal_references(tmp_path, line, error):
     r = run_validate(tmp_path, d)
     assert r.returncode == 1
     assert error in r.stdout
+    assert SECRET not in r.stdout + r.stderr and "Traceback" not in r.stderr
 
 
 def test_validator_rejects_unknown_motto_id(tmp_path):
     d = tmp_path / "p"
     write_personal(d, "  []\n", motto=f'motto-99: "{SECRET}"')
     r = run_validate(tmp_path, d)
-    assert r.returncode == 1 and "unknown motto id 'motto-99'" in r.stdout
+    assert r.returncode == 1 and "key 1 is not a motto id" in r.stdout
     assert SECRET not in r.stdout
 
 
@@ -175,7 +180,9 @@ def test_guard_passes_a_clean_repo(public):
 @pytest.mark.parametrize("path, text, problem", [
     ("personal/motto.yaml", "motto_text: {}\n", "personal data path"),
     ("captures/2026-11-17.yaml", "date: 2026-11-17\n", "personal data path"),
-    ("data/notes.yaml", f'motto_text:\n  motto-1: "{SECRET}"\n', "has a motto_text key"),
+    ("data/notes.yaml", f'motto_text:\n  motto-1: "{SECRET}"\n', "has a motto_text or reflections key"),
+    ("tests/fixtures/notes.yml", f'reflections:\n  - {{text: "{SECRET}"}}\n', "has a motto_text or reflections key"),
+    ("personal.example/captures/inbox/2026-11-17.txt", SECRET, "not part of the personal.example/ template"),
     ("personal.example/motto.yaml", f'motto_text:\n  motto-1: "{SECRET}"\n', "must stay null"),
     ("personal.example/reflections.yaml", f'reflections:\n  - {{text: "{SECRET}"}}\n', "must stay an empty list"),
 ])
@@ -203,3 +210,67 @@ def test_guard_checks_staged_changes(public):
     git(public, "add", "-f", "personal/motto.yaml")
     r = guard(public)
     assert r.returncode == 1 and "staged changes" in r.stdout
+
+
+def test_sync_conflict_leaves_a_clean_clone(remote, tmp_path):
+    laptop = personal.init(str(remote), tmp_path / "laptop")
+    phone = personal.init(str(remote), tmp_path / "phone")
+    for store, words in ((phone, "from the phone"), (laptop, "from the laptop")):
+        (store.path / "reflections.yaml").write_text(f'reflections: []  # {words}\n', encoding="utf-8")
+    phone.sync("phone edit")
+    with pytest.raises(StoreError, match="conflict with yours, so nothing was pushed .your changes are committed locally"):
+        laptop.sync("laptop edit")
+    assert laptop.in_progress() is None
+    assert "1 commit(s) not pushed" in laptop.pending()
+    assert "from the laptop" in (laptop.path / "reflections.yaml").read_text(encoding="utf-8")
+    assert "phone edit" in git(remote, "log", "--format=%s", "-1")
+
+
+def test_sync_refuses_an_unfinished_rebase(remote, tmp_path):
+    store = personal.init(str(remote), tmp_path / "p")
+    (store.path / ".git" / "rebase-merge").mkdir()
+    with pytest.raises(StoreError, match="a rebase is unfinished"):
+        store.sync("x")
+
+
+def test_remote_urls_are_printed_without_credentials(remote, tmp_path):
+    assert personal.redact("https://me:ghp_secret@github.com/me/uke-personal.git") == \
+        "https://***@github.com/me/uke-personal.git"
+    store = personal.init(str(remote), tmp_path / "p")
+    store.git("remote", "set-url", "origin", "https://me:ghp_secret@example.invalid/uke-personal.git")
+    assert "ghp_secret" not in store.remote()
+    with pytest.raises(StoreError) as e:
+        personal.init("https://me:ghp_secret@127.0.0.1:9/uke-personal.git", tmp_path / "q")
+    assert "ghp_secret" not in str(e.value)
+
+
+def test_missing_git_is_a_clear_error(tmp_path, monkeypatch):
+    monkeypatch.setenv("PATH", "")
+    with pytest.raises(StoreError, match="git is required"):
+        personal.init("https://github.com/me/uke-personal.git", tmp_path / "p")
+
+
+def test_unknown_url_scheme_is_refused(tmp_path):
+    with pytest.raises(StoreError, match="no personal store provider handles"):
+        personal.init("s3://bucket/uke", tmp_path / "p")
+
+
+@pytest.mark.parametrize("motto, reflections, error", [
+    (f'motto_text:\n  - "{SECRET}"\n', "reflections: []\n", "motto_text must be a mapping"),
+    (f'- "{SECRET}"\n', "reflections: []\n", "motto_text must be a mapping"),
+    ("motto_text: {}\n", f'reflections:\n  text: "{SECRET}"\n', "reflections must be a list"),
+    ("motto_text: {}\n", f'reflections: [{{subject: "{SECRET}"\n', "reflections.yaml: not valid YAML (line"),
+])
+def test_validator_reports_malformed_personal_files(tmp_path, motto, reflections, error):
+    d = tmp_path / "p"
+    d.mkdir()
+    (d / "motto.yaml").write_text(motto, encoding="utf-8")
+    (d / "reflections.yaml").write_text(reflections, encoding="utf-8")
+    r = run_validate(tmp_path, d)
+    assert r.returncode == 1 and error in r.stdout, r.stdout + r.stderr
+    assert SECRET not in r.stdout + r.stderr and "Traceback" not in r.stderr
+
+
+def test_tests_never_see_real_personal_data():
+    r = subprocess.run([sys.executable, str(REPO / "scripts" / "validate.py")], capture_output=True, text=True)
+    assert "personal data: not set up" in r.stdout
