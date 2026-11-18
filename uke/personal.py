@@ -19,9 +19,16 @@ from . import REPO
 
 
 def personal_dir(repo: Path = REPO) -> Path:
-    """Where personal data lives locally: $UKE_PERSONAL, else personal/ next to data/."""
+    """Where personal data lives locally: $UKE_PERSONAL, else personal/ next to data/.
+
+    A relative $UKE_PERSONAL is relative to the repo, not the current directory, so every command
+    finds the same folder wherever it runs from.
+    """
     env = os.environ.get("UKE_PERSONAL")
-    return Path(env).expanduser().resolve() if env else repo / "personal"
+    if not env:
+        return repo / "personal"
+    path = Path(env).expanduser()
+    return (path if path.is_absolute() else repo / path).resolve()
 
 
 class StoreError(RuntimeError):
@@ -82,7 +89,8 @@ class GitStore(Store):
 
     @classmethod
     def handles(cls, url):
-        return url.startswith(("https://", "http://", "ssh://", "git@", "file://", "/")) or url.endswith(".git")
+        # scp-style (me@host:repo) and plain paths have no scheme; git clones those too
+        return "://" not in url or url.startswith(("https://", "http://", "ssh://", "git://", "file://"))
 
     @classmethod
     def found_in(cls, path):
@@ -101,10 +109,19 @@ class GitStore(Store):
         return redact(url) if url else None
 
     def pending(self):
+        """Uncommitted files, then commits each side has that the other lacks (fetches first)."""
         changes = [line for line in self.git("status", "--porcelain").splitlines() if line]
-        ahead = self.git("rev-list", "--count", "@{upstream}..HEAD", check=False)
-        if ahead and ahead != "0":
-            changes.append(f"{ahead} commit(s) not pushed")
+        try:
+            self.git("fetch", "-q")
+        except StoreError:
+            changes.append("could not reach the remote, so its new changes are unknown")
+        counts = self.git("rev-list", "--left-right", "--count", "HEAD...@{upstream}", check=False).split()
+        if len(counts) == 2:
+            ahead, behind = counts
+            if ahead != "0":
+                changes.append(f"{ahead} commit(s) not pushed")
+            if behind != "0":
+                changes.append(f"{behind} commit(s) on the remote not pulled")
         return changes
 
     def in_progress(self) -> str | None:
@@ -123,14 +140,17 @@ class GitStore(Store):
         committed = bool(self.git("status", "--porcelain"))
         if committed:
             self.git("commit", "-q", "-m", message)
+        kept = " (your changes are committed locally)" if committed else ""
         try:
             self.git("pull", "-q", "--rebase")
-        except StoreError:
+        except StoreError as e:
+            if self.in_progress() != "rebase":
+                # not a conflict: offline, credentials, no upstream... say what git said
+                raise StoreError(f"{e}. Nothing was pushed{kept}.") from None
             self.git("rebase", "--abort", check=False)
             raise StoreError(
-                "the remote has changes that conflict with yours, so nothing was pushed"
-                + (" (your changes are committed locally)" if committed else "")
-                + f". Resolve them with git in {self.path} (git pull --rebase), then sync again.") from None
+                f"the remote has changes that conflict with yours, so nothing was pushed{kept}. "
+                f"Resolve them with git in {self.path} (git pull --rebase), then sync again.") from None
         self.git("push", "-q")
         return f"synced with {self.remote()}" + (" (committed local changes)" if committed else "")
 

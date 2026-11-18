@@ -50,11 +50,15 @@ uv run uke personal status                                          # where it i
 uv run uke personal sync                                            # commit local changes, pull, push
 ```
 
-To keep it somewhere other than `personal/`, set `UKE_PERSONAL` (e.g. in `.env`) before `init`.
+To keep it somewhere other than `personal/`, set `UKE_PERSONAL` (e.g. in `.env`) before `init`; a
+relative path is relative to this repo, e.g. `../uke-personal`. Any address git can clone works,
+including `me@host:repo` and local paths. `status` fetches first, so it also shows changes made on
+the phone that are not pulled yet.
 On the phone, add or edit files in the private repo on github.com (Add file > Create new file), for
 example a voice-memo transcript in `captures/inbox/`; the next `uke personal sync` brings it down.
 If the same file changed in both places, sync stops before pushing, keeps your local changes committed,
-and leaves the clone clean; resolve it with `git pull --rebase` in the personal directory.
+and leaves the clone clean; resolve it with `git pull --rebase` in the personal directory. Any other
+failure (offline, credentials) is reported as git reported it.
 Other stores, such as a Google Cloud Storage bucket, are not supported yet; each is one `Store`
 subclass in `uke/personal.py`.
 
@@ -62,7 +66,8 @@ The validator checks personal files when present (known subjects, principle and 
 and prints counts only, never their content. CI runs `scripts/check_public.py` on every commit of a
 PR and fails if personal data appears: a path under `personal/` or `captures/`, a file in
 `personal.example/` that is not part of the template, a filled-in template, or a `motto_text` or
-`reflections` key in any other text file. Run it before committing:
+`reflections` key in any other text file, in YAML, JSON, quoted or flow style (Python code is skipped,
+since tests build fake personal files). Run it before committing:
 
 ```
 uv run scripts/check_public.py

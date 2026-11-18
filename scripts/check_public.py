@@ -8,8 +8,9 @@ because a file added in one commit and deleted in the next would still be public
 Personal data belongs in the private personal store (see README, "Personal data"):
 - no path under personal/ or captures/
 - personal.example/ holds only its template files, and they stay empty
-- no motto_text or reflections key in any other text file
-Messages name files and keys only, never their content.
+- no motto_text or reflections key in any other text file: YAML, JSON, quoted or flow style.
+  Python files are skipped, since tests build fake personal files in code.
+Messages name files and keys only, never their content, and never echo a parse error (it quotes the line).
 """
 import subprocess
 import sys
@@ -19,8 +20,10 @@ import yaml
 TEMPLATE = "personal.example/"
 TEMPLATE_MOTTO = TEMPLATE + "motto.yaml"
 TEMPLATE_REFLECTIONS = TEMPLATE + "reflections.yaml"
-TEMPLATE_FILES = {TEMPLATE_MOTTO, TEMPLATE_REFLECTIONS, TEMPLATE + "README.md", TEMPLATE + "captures/inbox/.gitkeep"}
-PERSONAL_KEYS = r"^[[:space:]]*(motto_text|reflections)[[:space:]]*:"
+TEMPLATE_KEEP = TEMPLATE + "captures/inbox/.gitkeep"
+TEMPLATE_FILES = {TEMPLATE_MOTTO, TEMPLATE_REFLECTIONS, TEMPLATE + "README.md", TEMPLATE_KEEP}
+# the key at a line start, after "- ", "{" or ",", optionally quoted: YAML block, flow and JSON styles
+PERSONAL_KEYS = r"""(^|[-{,[:space:]])["']?(motto_text|reflections)["']?[[:space:]]*:"""
 INDEX = ":index"
 
 
@@ -40,13 +43,26 @@ def files(rev: str) -> list[str]:
 def with_personal_keys(rev: str) -> list[str]:
     """Text files at rev with a line that starts a motto_text or reflections key (one git process)."""
     where = ["--cached", "-E", "-e", PERSONAL_KEYS] if rev == INDEX else ["-E", "-e", PERSONAL_KEYS, rev]
-    out = git("grep", "-I", "-l", "-z", *where, ok=(0, 1))
+    out = git("grep", "-I", "-l", "-z", *where, "--", ".", ":(exclude)*.py", ok=(0, 1))
     prefix = "" if rev == INDEX else f"{rev}:"
     return [p.removeprefix(prefix) for p in out.split("\0") if p]
 
 
 def read(rev: str, path: str) -> str:
     return git("show", f":{path}" if rev == INDEX else f"{rev}:{path}")
+
+
+def template(rev: str, path: str, key: str, problems: list[str]):
+    """A template's top-level key, or None after recording a problem. Parse errors are not echoed."""
+    try:
+        doc = yaml.safe_load(read(rev, path))
+    except Exception:  # YAMLError quotes the offending line; ValueError comes from impossible dates
+        problems.append(f"{path}: not valid YAML")
+        return None
+    if doc is not None and not isinstance(doc, dict):
+        problems.append(f"{path}: must be a mapping with a {key} key")
+        return None
+    return (doc or {}).get(key)
 
 
 def check(rev: str) -> list[str]:
@@ -61,13 +77,16 @@ def check(rev: str) -> list[str]:
         if path not in (TEMPLATE_MOTTO, TEMPLATE_REFLECTIONS):
             problems.append(f"{path}: has a motto_text or reflections key")
     if TEMPLATE_MOTTO in paths:
-        motto = (yaml.safe_load(read(rev, TEMPLATE_MOTTO)) or {}).get("motto_text") or {}
-        filled = [str(k) for k, v in motto.items() if v is not None] if isinstance(motto, dict) else ["(not a mapping)"]
-        if filled:
-            problems.append(f"{TEMPLATE_MOTTO}: motto_text must stay null, filled: {', '.join(filled)}")
-    if TEMPLATE_REFLECTIONS in paths:
-        if (yaml.safe_load(read(rev, TEMPLATE_REFLECTIONS)) or {}).get("reflections"):
-            problems.append(f"{TEMPLATE_REFLECTIONS}: reflections must stay an empty list")
+        motto = template(rev, TEMPLATE_MOTTO, "motto_text", problems) or {}
+        if not isinstance(motto, dict):
+            problems.append(f"{TEMPLATE_MOTTO}: motto_text must be a mapping of motto ids to null")
+        elif any(v is not None for v in motto.values()):
+            filled = [k for k, v in motto.items() if v is not None and isinstance(k, str) and k.startswith("motto-")]
+            problems.append(f"{TEMPLATE_MOTTO}: motto_text must stay null" + (f", filled: {', '.join(filled)}" if filled else ""))
+    if TEMPLATE_REFLECTIONS in paths and template(rev, TEMPLATE_REFLECTIONS, "reflections", problems):
+        problems.append(f"{TEMPLATE_REFLECTIONS}: reflections must stay an empty list")
+    if TEMPLATE_KEEP in paths and read(rev, TEMPLATE_KEEP):
+        problems.append(f"{TEMPLATE_KEEP}: must stay empty")
     return problems
 
 

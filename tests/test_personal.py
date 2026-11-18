@@ -48,6 +48,27 @@ def test_personal_dir_defaults_to_repo_and_follows_env(tmp_path, monkeypatch):
     assert personal.personal_dir(tmp_path) == (tmp_path / "anywhere" / "my-data").resolve()
 
 
+def test_relative_personal_dir_is_relative_to_the_repo(tmp_path, monkeypatch):
+    repo = tmp_path / "uke"
+    monkeypatch.setenv("UKE_PERSONAL", "../uke-personal")
+    for cwd in (tmp_path, repo / "scripts"):
+        cwd.mkdir(parents=True, exist_ok=True)
+        monkeypatch.chdir(cwd)
+        assert personal.personal_dir(repo) == (tmp_path / "uke-personal").resolve()
+
+
+@pytest.mark.parametrize("url, handled", [
+    ("https://github.com/me/uke-personal.git", True),
+    ("git@github.com:me/uke-personal.git", True),
+    ("me@nas:repos/uke-personal", True),
+    ("../uke-personal", True),
+    ("~/backups/uke-personal", True),
+    ("s3://bucket/uke", False),
+])
+def test_git_handles_every_git_address(url, handled):
+    assert personal.GitStore.handles(url) is handled
+
+
 def test_status_without_personal_data(tmp_path, monkeypatch, capsys):
     monkeypatch.setenv("UKE_PERSONAL", str(tmp_path / "absent"))
     assert main(["personal", "status"]) == 0
@@ -183,6 +204,14 @@ def test_guard_passes_a_clean_repo(public):
     ("data/notes.yaml", f'motto_text:\n  motto-1: "{SECRET}"\n', "has a motto_text or reflections key"),
     ("tests/fixtures/notes.yml", f'reflections:\n  - {{text: "{SECRET}"}}\n', "has a motto_text or reflections key"),
     ("personal.example/captures/inbox/2026-11-17.txt", SECRET, "not part of the personal.example/ template"),
+    ("personal.example/captures/inbox/.gitkeep", SECRET, ".gitkeep: must stay empty"),
+    ("data/export.json", f'{{"motto_text": {{"motto-1": "{SECRET}"}}}}\n', "has a motto_text or reflections key"),
+    ("data/notes.yaml", f'- reflections: ["{SECRET}"]\n', "has a motto_text or reflections key"),
+    ("data/notes.yaml", f'{{reflections: ["{SECRET}"]}}\n', "has a motto_text or reflections key"),
+    ("data/notes.yaml", f"'motto_text': {{motto-1: x}}\n", "has a motto_text or reflections key"),
+    ("personal.example/motto.yaml", f"motto_text:\n  motto-1: {SECRET}: and more\n", "motto.yaml: not valid YAML"),
+    ("personal.example/reflections.yaml", f"reflections:\n  - {{date: 2026-11-31, text: {SECRET}}}\n", "not valid YAML"),
+    ("personal.example/motto.yaml", f'- "{SECRET}"\n', "must be a mapping"),
     ("personal.example/motto.yaml", f'motto_text:\n  motto-1: "{SECRET}"\n', "must stay null"),
     ("personal.example/reflections.yaml", f'reflections:\n  - {{text: "{SECRET}"}}\n', "must stay an empty list"),
 ])
@@ -239,9 +268,18 @@ def test_remote_urls_are_printed_without_credentials(remote, tmp_path):
     store = personal.init(str(remote), tmp_path / "p")
     store.git("remote", "set-url", "origin", "https://me:ghp_secret@example.invalid/uke-personal.git")
     assert "ghp_secret" not in store.remote()
+
+
+
+def test_git_errors_are_printed_without_credentials(monkeypatch):
+    """No network: stand in for git failing with the URL in its message."""
+    def fake_run(args, **kw):
+        return subprocess.CompletedProcess(args, 128, "", "fatal: unable to access "
+                                           "'https://me:ghp_secret@github.com/me/uke-personal.git/': 403")
+    monkeypatch.setattr(personal.subprocess, "run", fake_run)
     with pytest.raises(StoreError) as e:
-        personal.init("https://me:ghp_secret@127.0.0.1:9/uke-personal.git", tmp_path / "q")
-    assert "ghp_secret" not in str(e.value)
+        personal.run_git(["clone", "-q", "https://me:ghp_secret@github.com/me/uke-personal.git", "p"])
+    assert "ghp_secret" not in str(e.value) and "https://***@github.com" in str(e.value)
 
 
 def test_missing_git_is_a_clear_error(tmp_path, monkeypatch):
@@ -260,6 +298,8 @@ def test_unknown_url_scheme_is_refused(tmp_path):
     (f'- "{SECRET}"\n', "reflections: []\n", "motto_text must be a mapping"),
     ("motto_text: {}\n", f'reflections:\n  text: "{SECRET}"\n', "reflections must be a list"),
     ("motto_text: {}\n", f'reflections: [{{subject: "{SECRET}"\n', "reflections.yaml: not valid YAML (line"),
+    ("motto_text: {}\n", f'reflections:\n  - {{subject: shomenuchi, date: 2026-11-31, text: "{SECRET}"}}\n',
+     "reflections.yaml: has an impossible date"),
 ])
 def test_validator_reports_malformed_personal_files(tmp_path, motto, reflections, error):
     d = tmp_path / "p"
@@ -274,3 +314,30 @@ def test_validator_reports_malformed_personal_files(tmp_path, motto, reflections
 def test_tests_never_see_real_personal_data():
     r = subprocess.run([sys.executable, str(REPO / "scripts" / "validate.py")], capture_output=True, text=True)
     assert "personal data: not set up" in r.stdout
+
+
+def test_guard_skips_python_code(public):
+    commit(public, "tests/test_fake.py", 'FAKE = "reflections: []"\nmotto_text: int = 0\n')
+    assert guard(public).returncode == 0
+
+
+def test_sync_reports_the_real_error_when_offline(remote, tmp_path):
+    store = personal.init(str(remote), tmp_path / "p")
+    (store.path / "reflections.yaml").write_text("reflections: []  # edited\n", encoding="utf-8")
+    remote.rename(tmp_path / "moved.git")   # the remote is unreachable
+    with pytest.raises(StoreError) as e:
+        store.sync("offline edit")
+    msg = str(e.value)
+    assert "conflict" not in msg and "git pull failed" in msg
+    assert "Nothing was pushed (your changes are committed locally)" in msg
+    assert store.in_progress() is None
+
+
+def test_status_sees_remote_changes(remote, tmp_path):
+    laptop = personal.init(str(remote), tmp_path / "laptop")
+    phone = personal.init(str(remote), tmp_path / "phone")
+    (phone.path / "captures" / "inbox" / "2026-11-17.txt").write_text("ikkyo", encoding="utf-8")
+    phone.sync("capture")
+    assert "1 commit(s) on the remote not pulled" in laptop.pending()
+    remote.rename(tmp_path / "moved.git")
+    assert "could not reach the remote, so its new changes are unknown" in laptop.pending()

@@ -134,6 +134,9 @@ def load_personal(name, key, kind):
         mark = getattr(e, "problem_mark", None)
         errors.append(f"personal {name}: not valid YAML" + (f" (line {mark.line + 1})" if mark else ""))
         return None
+    except ValueError:  # PyYAML's date parsing, e.g. 2026-11-31
+        errors.append(f"personal {name}: has an impossible date (dates are YYYY-MM-DD)")
+        return None
     except (OSError, UnicodeDecodeError):
         errors.append(f"personal {name}: cannot be read as UTF-8 text")
         return None
@@ -157,12 +160,13 @@ if personal_dir.exists():
         if not an_id(k, motto_ids):
             errors.append(f"personal motto.yaml: key {n} is not a motto id")
     reflections = load_personal("reflections.yaml", "reflections", list)
+    reflection_subjects = subjects - {"kata-all"}  # kata-all only groups media
     for n, item in enumerate(reflections or [], 1):
         where = f"personal reflections.yaml entry {n}"
         if not isinstance(item, dict):
             errors.append(f"{where}: not a mapping")
             continue
-        if not an_id(item.get("subject"), subjects - {"kata-all"}):
+        if not an_id(item.get("subject"), reflection_subjects):
             errors.append(f"{where}: subject is not a technique, kata or term id")
         if item.get("principle") is not None and not an_id(item["principle"], principles):
             errors.append(f"{where}: principle is not a principle id")
