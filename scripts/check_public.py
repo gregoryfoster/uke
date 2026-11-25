@@ -10,7 +10,8 @@ Personal data belongs in the private personal store (see README, "Personal data"
 - no path under personal/ or captures/
 - personal.example/ holds only its template files, and they stay empty (motto keys are motto ids)
 - no motto_text or reflections key in any other text file: YAML, JSON, quoted or flow style.
-  Only Python under tests/ is skipped, since the tests build fake personal files in code.
+  In Python only quoted keys count (a dict literal could hold real text; `motto_text: str` is an
+  annotation), and Python under tests/ is skipped, since the tests build fake personal files in code.
 Messages name files and keys only, never their content, and never echo a parse error (it quotes the line).
 """
 import re
@@ -27,6 +28,8 @@ TEMPLATE_FILES = {TEMPLATE_MOTTO, TEMPLATE_REFLECTIONS, TEMPLATE + "README.md", 
 MOTTO_ID = re.compile(r"motto-[0-9]+")
 # the key at a line start, after "- ", "{" or ",", optionally quoted: YAML block, flow and JSON styles
 PERSONAL_KEYS = r"""(^|[-{,[:space:]])["']?(motto_text|reflections)["']?[[:space:]]*:"""
+# in Python, only a quoted key: {"motto_text": ...}
+QUOTED_KEYS = r"""["'](motto_text|reflections)["'][[:space:]]*:"""
 INDEX = ":index"
 
 
@@ -43,12 +46,18 @@ def files(rev: str) -> list[str]:
     return git("ls-tree", "-r", "-z", "--name-only", rev).split("\0")[:-1]
 
 
-def with_personal_keys(rev: str) -> list[str]:
-    """Text files at rev with a line that starts a motto_text or reflections key (one git process)."""
-    where = ["--cached", "-E", "-e", PERSONAL_KEYS] if rev == INDEX else ["-E", "-e", PERSONAL_KEYS, rev]
-    out = git("grep", "-I", "-l", "-z", *where, "--", ".", ":(exclude,glob)tests/**/*.py", ok=(0, 1))
+def grep(rev: str, pattern: str, *pathspec: str) -> list[str]:
+    """Text files at rev, within pathspec, with a line matching pattern."""
+    where = ["--cached", "-E", "-e", pattern] if rev == INDEX else ["-E", "-e", pattern, rev]
+    out = git("grep", "-I", "-l", "-z", *where, "--", *pathspec, ok=(0, 1))
     prefix = "" if rev == INDEX else f"{rev}:"
     return [p.removeprefix(prefix) for p in out.split("\0") if p]
+
+
+def with_personal_keys(rev: str) -> list[str]:
+    """Text files at rev with a motto_text or reflections key (two git processes)."""
+    return (grep(rev, PERSONAL_KEYS, ".", ":(exclude,glob)**/*.py")
+            + grep(rev, QUOTED_KEYS, ":(glob)**/*.py", ":(exclude,glob)tests/**/*.py"))
 
 
 def read(rev: str, path: str) -> str:

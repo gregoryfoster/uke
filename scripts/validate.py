@@ -170,6 +170,8 @@ if personal_dir.exists():
             errors.append(f"{where}: subject is not a technique, kata or term id")
         if item.get("principle") is not None and not an_id(item["principle"], principles):
             errors.append(f"{where}: principle is not a principle id")
+        if item.get("motto") is not None and not an_id(item["motto"], motto_ids):
+            errors.append(f"{where}: motto is not a motto id")
         if not isinstance(item.get("date"), datetime.date):
             errors.append(f"{where}: date must be YYYY-MM-DD")
         if not item.get("text"):
