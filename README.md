@@ -92,7 +92,7 @@ uv run uke build all               # or: build deck, build audio
 
 | Output | What it is |
 | --- | --- |
-| `build/uke.apkg` | Anki deck: one note per kumi waza entry, kata and term, three cards each (Japanese to meaning, English to Japanese, breakdown). Tagged `uke::study`, `uke::review` or `uke::later` and `grade::4kyu` etc., so filtered decks can pick the study set. |
+| `build/uke.apkg` | Anki deck: one note per kumi waza entry, kata and term, three cards each (Japanese to meaning, English to Japanese, breakdown). Every side is spoken, so it runs hands free (see below). Tagged `uke::study`, `uke::review` or `uke::later` and `grade::4kyu` etc., so filtered decks can pick the study set. |
 | `build/audio/study/*.mp3` | Commute audio, one file per study-set entry: Japanese term, pause, roots and English meaning, pause. Audio only. |
 | `build/audio/uke-study-loop.mp3` | All study-set entries in one file, plus `uke-study.m3u` |
 | `build/uke.manifest.json` | The deck's notes with a fingerprint of each, so the next build can say what changed |
@@ -105,6 +105,11 @@ Entries with `kana: null` (e.g. Juntai) get cards but no audio, and the build pr
 Rebuild, then import `uke.apkg` again: on Android, open it in AnkiDroid. Each note's id comes from its
 entry id in `data/`, so re-importing updates existing cards in place and keeps their review history.
 
+On the import screen, set **Update notes** and **Update note types** to **Always** and turn on
+**Merge note types** (checked in AnkiDroid 2.25.3). With the defaults, cards are not updated when the
+note type has changed, for example when a build adds a field. "Always" is safe because the deck is
+generated: nothing in it is edited in Anki.
+
 - **Changed audio:** card audio files are named by their content (`uke-term-shomenuchi-160d1508.mp3`),
   so a fixed pronunciation gets a new file name and replaces the old sound. Anki would otherwise keep
   a file it already has with the same name. Old files linger until you run Check Media and delete the unused ones
@@ -115,6 +120,35 @@ entry id in `data/`, so re-importing updates existing cards in place and keeps t
   window, then delete or suspend the note.
 - **Anki is read-only:** every field is overwritten on re-import, so anything typed into a card in
   Anki is lost. Your own notes and reflections belong in your personal data, not in the deck.
+
+### Hands free: auto advance in AnkiDroid
+
+Every side of every card is spoken, so the deck can run without touching the phone:
+
+| Card | Front says | Back says |
+| --- | --- | --- |
+| 1 Japanese to meaning | the term | each root (Japanese, then English), then the meaning |
+| 2 English to Japanese | the English prompt | the term |
+| 3 Breakdown | the term | each part's role and gloss, or each root's meaning |
+
+The front's audio is not replayed on the back. Anki's auto advance supplies the two waits. In
+AnkiDroid (checked in 2.25.3), open the options for the Uke deck and, under **Auto Advance**, set:
+
+| Setting | Value | Why |
+| --- | --- | --- |
+| Seconds to show question for | e.g. 7 | time to recall before the answer is spoken |
+| Seconds to show answer for | e.g. 5 | pause after the answer, before the next card |
+| Wait for audio | on | each wait starts after the speech ends |
+| Question action | Show Answer | |
+| Answer action | Bury Card | hands free, no card is graded: burying hides it for the rest of the day and leaves its interval unchanged |
+
+Options belong to a preset that other decks may share ("Default (used by 5 decks)"); auto advance
+still only runs when you turn it on. Start studying the deck and AnkiDroid offers to turn on auto
+advance. A review card buried this way comes back tomorrow, a day late; study it normally if that
+matters.
+
+The commute MP3s (`uke build audio`) are the same pattern without Anki: term, pause, roots and
+meaning, pause, with the pauses set by `--recall-pause` and `--after-pause`.
 
 ### Text-to-speech
 

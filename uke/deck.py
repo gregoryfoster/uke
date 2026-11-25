@@ -5,6 +5,11 @@
 3. Breakdown                     (roots for terms and kata; part roles for kumi waza).
    Skipped for single-root words, where it would repeat card 1.
 
+Every side is spoken, so the deck runs hands free with Anki's auto advance:
+card 1 says the term, then the roots and meaning; card 2 says the English prompt, then the term;
+card 3 says the term, then each part's role and gloss (or each root's meaning).
+Audio on the front is inside {{FrontSide}} on the back, where Anki does not autoplay it again.
+
 Note GUIDs come from entry ids, so re-importing updates cards instead of duplicating them.
 Audio files are named by content, so changed audio replaces the old on re-import.
 Each build writes a manifest next to the .apkg; comparing manifests shows added, changed and removed notes.
@@ -21,7 +26,7 @@ from pathlib import Path
 
 import genanki
 
-from .audio import card_audio, no_kana_warning
+from .audio import answer_pieces, breakdown_pieces, no_kana_warning, prompt_pieces, render
 from .data import Dataset, Entry, Segment
 from .tts import Synth
 
@@ -30,7 +35,11 @@ DECK_IDS = {"kumi_waza": 1731000201, "kata": 1731000202, "term": 1731000203}
 DECK_NAMES = {"kumi_waza": "Uke::Kumi waza", "kata": "Uke::Kata", "term": "Uke::Terms"}
 
 FIELDS = ["Id", "Name", "Kana", "Kanji", "Category", "English", "Meaning", "Breakdown",
-          "BreakdownPrompt", "BreakdownAsk", "Audio", "ClipUrl", "Grades", "Note"]
+          "BreakdownPrompt", "BreakdownAsk", "Audio", "ClipUrl", "Grades", "Note",
+          "PromptAudio", "AnswerAudio", "BreakdownAudio"]
+
+# Audio slots: the note field each clip goes in, and the name part that tells the files apart.
+AUDIO_FIELDS = {"term": "Audio", "prompt": "PromptAudio", "answer": "AnswerAudio", "breakdown": "BreakdownAudio"}
 
 DETAILS = """
 <div class="kana">{{Kana}}</div>
@@ -46,11 +55,11 @@ TEMPLATES = [
         "name": "1 Japanese to meaning",
         "qfmt": '<div class="tag">{{Category}}</div><div class="jp">{{Name}}</div>{{Audio}}'
                 '<div class="ask">Roots and meaning?</div>',
-        "afmt": '<div class="back">{{FrontSide}}<hr id="answer">' + DETAILS + "</div>",
+        "afmt": '<div class="back">{{FrontSide}}<hr id="answer">{{AnswerAudio}}' + DETAILS + "</div>",
     },
     {
         "name": "2 English to Japanese",
-        "qfmt": '<div class="tag">{{Category}}</div><div class="en">{{English}}</div>'
+        "qfmt": '<div class="tag">{{Category}}</div><div class="en">{{English}}</div>{{PromptAudio}}'
                 '<div class="ask">In Japanese?</div>',
         "afmt": '<div class="back">{{FrontSide}}<hr id="answer"><div class="jp">{{Name}}</div>{{Audio}}'
                 + DETAILS + "</div>",
@@ -58,8 +67,8 @@ TEMPLATES = [
     {
         "name": "3 Breakdown",
         "qfmt": '{{#BreakdownPrompt}}<div class="tag">{{Category}}</div><div class="jp">{{BreakdownPrompt}}</div>'
-                '<div class="ask">{{BreakdownAsk}}</div>{{/BreakdownPrompt}}',
-        "afmt": '<div class="back">{{FrontSide}}<hr id="answer"><div class="jp small">{{Name}}</div>{{Audio}}'
+                '{{Audio}}<div class="ask">{{BreakdownAsk}}</div>{{/BreakdownPrompt}}',
+        "afmt": '<div class="back">{{FrontSide}}<hr id="answer"><div class="jp small">{{Name}}</div>{{BreakdownAudio}}'
                 + DETAILS + "</div>",
     },
 ]
@@ -147,7 +156,8 @@ def tags(e: Entry) -> list[str]:
     return t
 
 
-def note_for(e: Entry, audio_name: str | None) -> genanki.Note:
+def note_for(e: Entry, audio: dict[str, str]) -> genanki.Note:
+    """The note for an entry; audio maps each slot in AUDIO_FIELDS to its file name, if it has one."""
     prompt, ask = breakdown_prompt(e)
     grades = ", ".join(grade_label(g) for g in e.grades) or "not yet required"
     status = {"study": "study set", "review": "review", "later": "later"}[e.status]
@@ -164,22 +174,33 @@ def note_for(e: Entry, audio_name: str | None) -> genanki.Note:
         "Breakdown": breakdown_html(e),
         "BreakdownPrompt": escape(prompt),
         "BreakdownAsk": escape(ask),
-        "Audio": f"[sound:{audio_name}]" if audio_name else "",
         "ClipUrl": escape(e.clip_url or "", quote=True),
         "Grades": escape(f"{grades} · {status}"),
         "Note": escape(e.note or ""),
+        **{f: f"[sound:{audio[slot]}]" if slot in audio else "" for slot, f in AUDIO_FIELDS.items()},
     }
     return genanki.Note(model=MODEL, fields=[values[f] for f in FIELDS], tags=tags(e),
                         guid=genanki.guid_for("uke", e.kind, e.id))
 
 
-def audio_name(e: Entry, mp3: bytes) -> str:
+def audio_name(e: Entry, mp3: bytes, slot: str = "term") -> str:
     """Card audio is named by its content, so changed audio gets a new name.
 
     Anki keeps a media file it already has under the same name, so a fixed pronunciation
     would never reach the phone if the name stayed the same.
     """
-    return f"uke-{e.kind}-{e.id}-{hashlib.sha1(mp3).hexdigest()[:8]}.mp3"
+    part = "" if slot == "term" else f"-{slot}"
+    return f"uke-{e.kind}-{e.id}{part}-{hashlib.sha1(mp3).hexdigest()[:8]}.mp3"
+
+
+def card_clips(synth: Synth, e: Entry) -> dict[str, list]:
+    """What each audio slot says for an entry. Slots with nothing to say are left out."""
+    clips = {"prompt": prompt_pieces(synth, e), "answer": answer_pieces(synth, e)}
+    if e.speech:
+        clips["term"] = [synth.clip(e.speech, "ja")]
+    if breakdown_prompt(e)[0]:
+        clips["breakdown"] = breakdown_pieces(synth, e)
+    return clips
 
 
 def manifest_path(apkg: Path) -> Path:
@@ -190,7 +211,7 @@ def note_key(e: Entry) -> str:
     return f"{e.kind}:{e.id}"
 
 
-def manifest_entry(e: Entry, note: genanki.Note, audio: str | None) -> dict:
+def manifest_entry(e: Entry, note: genanki.Note, audio: dict[str, str]) -> dict:
     content = "\x1f".join([*note.fields, " ".join(sorted(note.tags))])
     return {"name": e.romaji, "deck": DECK_NAMES[e.kind],
             "content": hashlib.sha1(content.encode("utf-8")).hexdigest()[:12], "audio": audio}
@@ -231,16 +252,17 @@ def build_deck(ds: Dataset, synth: Synth, out: Path, warn: list[str]) -> Path:
     decks = {k: genanki.Deck(DECK_IDS[k], DECK_NAMES[k]) for k in DECK_IDS}
     media, notes = [], {}
     for e in ds.entries:
-        tmp = card_audio(synth, e, media_dir / "encoding.mp3")
-        name = None
-        if tmp is None:
+        if not e.speech:
             warn.append(no_kana_warning(e))
-        else:
-            name = audio_name(e, tmp.read_bytes())
-            media.append(str(tmp.replace(media_dir / name)))
-        note = note_for(e, name)
+        audio = {}
+        for slot, pieces in card_clips(synth, e).items():
+            tmp = render(pieces, media_dir / "encoding.mp3")
+            if tmp is not None:
+                audio[slot] = audio_name(e, tmp.read_bytes(), slot)
+                media.append(str(tmp.replace(media_dir / audio[slot])))
+        note = note_for(e, audio)
         decks[e.kind].add_note(note)
-        notes[note_key(e)] = manifest_entry(e, note, name)
+        notes[note_key(e)] = manifest_entry(e, note, audio)
     genanki.Package(list(decks.values()), media_files=media).write_to_file(str(out))
     manifest_path(out).write_text(json.dumps({"version": 1, "notes": notes}, ensure_ascii=False, indent=1) + "\n",
                                   encoding="utf-8")

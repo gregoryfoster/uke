@@ -12,9 +12,10 @@ from types import SimpleNamespace
 
 import pytest
 
-from uke.audio import build_commute
+from uke.audio import answer_pieces, breakdown_pieces, build_commute
 from uke.data import STUDY, align, load
-from uke.deck import anki_search, breakdown_prompt, build_deck, compare, manifest_path, read_manifest
+from uke.deck import (AUDIO_FIELDS, FIELDS, MODEL, anki_search, breakdown_prompt, build_deck, compare,
+                      manifest_path, read_manifest)
 from uke.tts import SilentEngine, Synth, duration
 
 REPO = Path(__file__).resolve().parents[1]
@@ -181,15 +182,60 @@ def test_validator_rejects_bad_tts_kana(tmp_path):
 def test_audio_is_named_by_content(built, anki):
     manifest = read_manifest(manifest_path(built.apkg))
     assert set(manifest["notes"]) == {f"{e.kind}:{e.id}" for e in built.ds.entries}
+    total = 0
     for e in built.ds.entries:
         audio = manifest["notes"][f"{e.kind}:{e.id}"]["audio"]
-        if e.speech:
-            assert re.fullmatch(rf"uke-{e.kind}-{re.escape(e.id)}-[0-9a-f]{{8}}\.mp3", audio), audio
-            assert audio in anki.media
-            assert note(anki, e)[0][10] == f"[sound:{audio}]"
-        else:
-            assert audio is None
-    assert len(anki.media) == sum(1 for e in built.ds.entries if e.speech)
+        assert ("term" in audio) == bool(e.speech), e.id
+        fields = note(anki, e)[0]
+        for slot, name in audio.items():
+            part = "" if slot == "term" else f"-{slot}"
+            assert re.fullmatch(rf"uke-{e.kind}-{re.escape(e.id)}{part}-[0-9a-f]{{8}}\.mp3", name), name
+            assert name in anki.media
+            assert fields[FIELDS.index(AUDIO_FIELDS[slot])] == f"[sound:{name}]"
+        total += len(audio)
+    assert len(anki.media) == total
+
+
+def test_every_side_is_spoken(built, anki):
+    """Hands free: each card's front and back has audio, so auto advance can run a session."""
+    for e in built.ds.entries:
+        fields = note(anki, e)[0]
+        spoken = lambda f: fields[FIELDS.index(f)].startswith("[sound:")
+        assert spoken("PromptAudio") and spoken("AnswerAudio"), e.id      # card 2 front, card 1 back
+        assert spoken("Audio") == bool(e.speech), e.id                      # card 1 front, card 2 back
+        assert spoken("BreakdownAudio") == bool(breakdown_prompt(e)[0]), e.id  # card 3 back
+
+
+def test_templates_play_each_clip_on_the_right_side():
+    t = {tpl["name"][0]: tpl for tpl in MODEL.templates}
+    back = lambda n: t[n]["afmt"].split('<hr id="answer">', 1)[1]   # the part after {{FrontSide}}
+    assert "{{Audio}}" in t["1"]["qfmt"] and "{{AnswerAudio}}" in back("1")
+    assert "{{PromptAudio}}" in t["2"]["qfmt"] and "{{Audio}}" in back("2")
+    assert "{{Audio}}" in t["3"]["qfmt"] and "{{BreakdownAudio}}" in back("3")
+    for n in "123":
+        # front audio replays only through {{FrontSide}}, which Anki does not autoplay on the back
+        assert "{{Audio}}" not in back(n) or n == "2"
+
+
+def test_spoken_answer_says_roots_and_meaning(built):
+    synth = built.synth
+    e = built.ds.by_id("term", "kotegaeshi")
+    pieces = answer_pieces(synth, e)
+    clips = [p for p in pieces if isinstance(p, Path)]
+    assert len(clips) == 2 * len(e.segments[0].roots) + 1      # each root in Japanese and English, then the meaning
+    assert clips[-1] == synth.clip(e.meaning + ".", "en")
+    kumi = built.ds.by_id("kumi_waza", "katadori-ikkyo-omote-katameru")
+    said = [p for p in breakdown_pieces(synth, kumi) if isinstance(p, Path)]
+    assert said[:3] == [synth.clip(kumi.segments[0].role, "en"), synth.clip(kumi.segments[0].speech, "ja"),
+                        synth.clip(kumi.segments[0].gloss, "en")]
+    assert len(said) == 3 * len(kumi.segments)
+
+
+def test_juntai_is_spoken_in_english_only(built, anki):
+    fields = note(anki, built.ds.by_id("term", "juntai"))[0]
+    assert fields[FIELDS.index("Audio")] == ""
+    assert fields[FIELDS.index("PromptAudio")].startswith("[sound:")
+    assert fields[FIELDS.index("AnswerAudio")].startswith("[sound:")
 
 
 def test_changed_speech_changes_only_its_audio(built, tmp_path):

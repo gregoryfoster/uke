@@ -1,6 +1,8 @@
-"""Audio: the Japanese clip for each card, and the commute loop for the study set.
+"""Audio: the clips on each card, and the commute loop for the study set.
 
 The voice reads each entry's `speech` (tts_kana if set, else kana), never romaji.
+Every side of every card can be heard, so the deck works hands free with Anki's auto advance:
+the Japanese term, the English prompt, the spoken answer (roots and meaning) and the breakdown.
 
 Commute pattern, audio only: Japanese term, pause, each root (Japanese then English), the English
 meaning, pause. No tones, chimes or references to a screen, so it is safe to play while driving.
@@ -23,25 +25,31 @@ def no_kana_warning(e: Entry) -> str:
     return f"{e.kind} '{e.id}': kana is null, so it has no audio"
 
 
-def card_audio(synth: Synth, e: Entry, dest: Path) -> Path | None:
-    """The Japanese term alone, as played on the cards."""
-    if not e.speech:
+def render(pieces: list, dest: Path) -> Path | None:
+    """Clips and pauses as one MP3 with a short lead-in, or None when there is nothing to say."""
+    if not any(isinstance(p, Path) for p in pieces):
         return None
     with tempfile.TemporaryDirectory() as tmp:
         wav = Path(tmp) / "a.wav"
-        concat([0.2, synth.clip(e.speech, "ja")], wav)
+        concat([0.2, *pieces], wav)
         encode_mp3(wav, dest)
     return dest
 
 
-def commute_pieces(synth: Synth, e: Entry, recall: float, after: float) -> list:
-    """Clips and pauses for one entry, or [] when it has no kana."""
-    if not e.speech:
-        return []
-    pieces: list = [LEAD_IN, synth.clip(e.speech, "ja"), recall]
+def prompt_pieces(synth: Synth, e: Entry) -> list:
+    """The English prompt, read on the front of the English-to-Japanese card."""
+    return [synth.clip(e.english_prompt, "en")]
+
+
+def answer_pieces(synth: Synth, e: Entry) -> list:
+    """Roots (Japanese, then English) and the meaning: the answer to "roots and meaning?".
+
+    Shared by the commute loop and the back of the Japanese-to-meaning card.
+    """
+    pieces: list = []
     for seg in e.segments:
         single = len(seg.roots) == 1 and seg.roots[0].kana == seg.kana
-        if e.kind == "kumi_waza" and single:
+        if e.kind == "kumi_waza" and single and seg.speech:
             # a part that is its own root (omote, katameru): the part and its gloss
             pieces += [synth.clip(seg.speech, "ja"), ROOT_GAP, synth.clip(seg.gloss, "en"), BETWEEN_ROOTS]
             continue
@@ -52,8 +60,31 @@ def commute_pieces(synth: Synth, e: Entry, recall: float, after: float) -> list:
                 continue
             pieces += [synth.clip(r.kana, "ja"), ROOT_GAP,
                        synth.clip(r.meaning.split(";")[0].strip(), "en"), BETWEEN_ROOTS]
-    pieces += [synth.clip(e.meaning + ".", "en"), after]
+    return pieces + [synth.clip(e.meaning + ".", "en")]
+
+
+def breakdown_pieces(synth: Synth, e: Entry) -> list:
+    """The answer to the breakdown card: each part's role and gloss, or each root's meaning."""
+    pieces: list = []
+    if e.kind == "kumi_waza":
+        for seg in e.segments:
+            if not seg.speech:
+                continue
+            pieces += [synth.clip(seg.role, "en"), ROOT_GAP, synth.clip(seg.speech, "ja"), ROOT_GAP,
+                       synth.clip(seg.gloss, "en"), BETWEEN_ROOTS]
+        return pieces
+    for r in e.segments[0].roots:
+        if r.kana:
+            pieces += [synth.clip(r.kana, "ja"), ROOT_GAP,
+                       synth.clip(r.meaning.split(";")[0].strip(), "en"), BETWEEN_ROOTS]
     return pieces
+
+
+def commute_pieces(synth: Synth, e: Entry, recall: float, after: float) -> list:
+    """Clips and pauses for one entry, or [] when it has no kana."""
+    if not e.speech:
+        return []
+    return [LEAD_IN, synth.clip(e.speech, "ja"), recall, *answer_pieces(synth, e), after]
 
 
 def build_commute(entries: list[Entry], synth: Synth, out_dir: Path, warn: list[str],
