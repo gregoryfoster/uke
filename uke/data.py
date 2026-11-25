@@ -140,6 +140,11 @@ class Dataset:
         return [e for e in self.entries if e.status == STUDY]
 
 
+def load_motto(repo: Path = REPO) -> list[dict]:
+    """The motto lines from data/principles.yaml: id, line number and theme. The text is personal data."""
+    return _load(repo / "data", "principles.yaml")["motto"]
+
+
 def load(repo: Path = REPO) -> Dataset:
     data = repo / "data"
     roots = {r["id"]: r for r in _load(data, "roots.yaml")["roots"]}

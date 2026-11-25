@@ -97,7 +97,10 @@ depends only on the date, so running it again the same day shows the same thing:
 Your answer is appended to `reflections.yaml` in your personal data, with the date, the technique, the
 motto line and the principle `p-daily-life`; then run `uke personal sync` to back it up. An empty
 answer saves nothing. Without personal data, `uke today` shows the prompt and says where answers
-would go. Saving keeps the comment lines at the top of `reflections.yaml` but not comments elsewhere.
+would go. Saving keeps the comment lines at the top of `reflections.yaml` but not comments elsewhere,
+and replaces the file in one step, so an interruption leaves the old one intact. If `motto.yaml`
+cannot be read, the theme is shown; if `reflections.yaml` cannot be read, nothing is asked. Neither
+message quotes the file; `uv run scripts/validate.py` finds the line.
 
 ## Review status
 

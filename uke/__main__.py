@@ -9,7 +9,7 @@ from pathlib import Path
 
 from . import REPO
 from .audio import build_commute
-from .data import load
+from .data import load, load_motto
 from . import personal, today
 from .deck import anki_search, build_deck, compare, manifest_path, read_manifest
 from .tts import ENGINES, Synth, TTSError, concat, encode_mp3, make_engine
@@ -89,14 +89,29 @@ def main(argv=None) -> int:
 
 
 def today_cmd(a) -> int:
-    p = today.pick(load(), today.motto_lines(), a.date or datetime.date.today())
+    try:
+        p = today.pick(load(), load_motto(), a.date or datetime.date.today())
+    except ValueError as e:
+        print(f"error: {e}", file=sys.stderr)
+        return 1
     where = personal.personal_dir()
     has_personal = where.exists()
-    print(today.render(p, today.read_motto(where, p.motto_id) if has_personal else None))
+    motto_text = None
+    if has_personal:
+        try:
+            motto_text = today.read_motto(where, p.motto_id)
+        except ValueError as e:
+            print(f"warning: {e}; showing the theme instead", file=sys.stderr)
+    print(today.render(p, motto_text))
     if not has_personal:
         print(f"\nNo personal data at {where}, so answers are not saved. With it, they go to "
               f"{where / 'reflections.yaml'} (set it up with `uke personal init <url>`).")
         return 0
+    try:
+        today.check_reflections(where)    # before asking, so an answer is never typed in vain
+    except ValueError as e:
+        print(f"error: {e}. Nothing was asked or saved.", file=sys.stderr)
+        return 1
     answer = a.answer
     if answer is None:
         if not sys.stdin.isatty():
@@ -105,6 +120,9 @@ def today_cmd(a) -> int:
             answer = input("> ")
         except EOFError:
             answer = ""
+        except KeyboardInterrupt:
+            print("\nNothing saved.")
+            return 130
     answer = answer.strip()
     if not answer:
         print("Nothing saved.")

@@ -12,7 +12,7 @@ import yaml
 
 from uke import today
 from uke.__main__ import main
-from uke.data import REVIEW, STUDY, load
+from uke.data import REVIEW, STUDY, load, load_motto
 
 REPO = Path(__file__).resolve().parents[1]
 DAY = datetime.date(2026, 11, 24)
@@ -26,7 +26,7 @@ def ds():
 
 @pytest.fixture(scope="module")
 def motto():
-    return today.motto_lines()
+    return load_motto()
 
 
 @pytest.fixture
@@ -133,5 +133,67 @@ def test_asks_in_a_terminal_and_skips_when_piped(personal_dir, monkeypatch, caps
 def test_a_broken_reflections_file_is_not_overwritten(personal_dir, capsys):
     (personal_dir / "reflections.yaml").write_text("reflections:\n  text: not a list\n", encoding="utf-8")
     assert main(["today", "--date", "2026-11-24", "--answer", "x"]) == 1
-    assert "not a mapping with a reflections list" in capsys.readouterr().err
+    assert "needs a top-level reflections list. Nothing was asked or saved" in capsys.readouterr().err
     assert (personal_dir / "reflections.yaml").read_text() == "reflections:\n  text: not a list\n"
+
+
+class Tty(io.StringIO):
+    def isatty(self):
+        return True
+
+
+def test_a_reflections_typo_stops_before_asking_and_never_echoes(personal_dir, monkeypatch, capsys):
+    broken = f'reflections:\n  - {{subject: kata-ikkyo, text: {MOTTO}: and more}}\n'
+    (personal_dir / "reflections.yaml").write_text(broken, encoding="utf-8")
+    asked = []
+    monkeypatch.setattr("builtins.input", lambda prompt="": asked.append(1) or "an answer")
+    monkeypatch.setattr(sys, "stdin", Tty())
+    assert main(["today", "--date", "2026-11-24"]) == 1
+    err = capsys.readouterr().err
+    assert "cannot be read as YAML" in err and "Nothing was asked or saved" in err
+    assert MOTTO not in err and not asked
+    assert (personal_dir / "reflections.yaml").read_text(encoding="utf-8") == broken
+
+
+@pytest.mark.parametrize("text", [
+    f'motto_text:\n  - "{MOTTO}"\n',                 # lines pasted as a list
+    f"motto_text:\n  motto-1: {MOTTO}: more\n",      # an unquoted colon
+    f'- "{MOTTO}"\n',
+])
+def test_a_malformed_motto_file_shows_the_theme(personal_dir, capsys, text):
+    (personal_dir / "motto.yaml").write_text(text, encoding="utf-8")
+    assert main(["today", "--date", "2026-11-24", "--answer", ""]) == 0
+    out, err = capsys.readouterr()
+    assert "(theme):" in out and "showing the theme instead" in err
+    assert MOTTO not in out + err
+
+
+def test_an_interrupted_save_leaves_reflections_intact(personal_dir, monkeypatch, motto):
+    path = personal_dir / "reflections.yaml"
+    before = path.read_text(encoding="utf-8")
+    def fail(src, dst):
+        raise OSError("disk full")
+    monkeypatch.setattr(today.os, "replace", fail)
+    with pytest.raises(OSError):
+        today.save(personal_dir, today.pick(load(), motto, DAY), "an answer")
+    assert path.read_text(encoding="utf-8") == before
+    assert not list(personal_dir.glob(".reflections-*"))
+
+
+def test_nothing_to_pick_is_a_clear_error(monkeypatch, capsys, motto):
+    monkeypatch.setattr(today, "candidates", lambda ds: [])
+    with pytest.raises(ValueError, match="profile.next_exam"):
+        today.pick(load(), motto, DAY)
+    assert main(["today", "--date", "2026-11-24"]) == 1
+    err = capsys.readouterr().err
+    assert "no kumi waza or kata" in err and "Traceback" not in err
+
+
+def test_ctrl_c_at_the_prompt_saves_nothing(personal_dir, monkeypatch, capsys):
+    def interrupt(prompt=""):
+        raise KeyboardInterrupt
+    monkeypatch.setattr("builtins.input", interrupt)
+    monkeypatch.setattr(sys, "stdin", Tty())
+    assert main(["today", "--date", "2026-11-24"]) == 130
+    assert "Nothing saved." in capsys.readouterr().out
+    assert yaml.safe_load((personal_dir / "reflections.yaml").read_text())["reflections"] == []
