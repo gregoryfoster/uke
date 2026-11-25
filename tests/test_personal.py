@@ -394,3 +394,42 @@ def test_push_failure_says_changes_are_kept(remote, tmp_path):
     hook.unlink()
     assert "synced" in store.sync("retry")
     assert store.pending() == []
+
+
+def test_guard_ignores_python_annotations_but_not_quoted_keys(public):
+    commit(public, "uke/today.py", "def render(motto_text: str | None):\n    if motto_text:\n        pass\n")
+    assert guard(public).returncode == 0
+    commit(public, "setup_motto.py", f'MOTTO = {{"motto_text": {{"motto-1": "{SECRET}"}}}}\n')
+    r = guard(public)
+    assert r.returncode == 1 and "setup_motto.py: has a motto_text or reflections key" in r.stdout
+    assert SECRET not in r.stdout
+
+
+def test_guard_still_scans_yaml_with_unquoted_keys(public):
+    commit(public, "notes.yaml", f'motto_text:\n  motto-1: "{SECRET}"\n')
+    r = guard(public)
+    assert r.returncode == 1 and "notes.yaml: has a motto_text or reflections key" in r.stdout
+
+
+def test_guard_does_not_scan_its_own_source(public):
+    commit(public, "scripts/check_public.py", '# matches like {"motto_text": ...} are flagged elsewhere\n')
+    assert guard(public).returncode == 0
+    commit(public, "scripts/other.py", '# {"motto_text": ...}\n')
+    assert guard(public).returncode == 1
+
+
+def test_guard_catches_yaml_inside_a_python_string(public):
+    commit(public, "uke/seed.py", f'TEMPLATE = """\nmotto_text:\n  motto-1: "{SECRET}"\n"""\n')
+    r = guard(public)
+    assert r.returncode == 1 and "uke/seed.py: has a motto_text or reflections key" in r.stdout
+    assert SECRET not in r.stdout
+
+
+@pytest.mark.parametrize("code", [
+    "def f(motto_text: str | None = None):\n    pass\n",
+    "class A:\n    reflections: list[dict]\n    motto_text: dict = {}\n",
+    "for reflections in []:\n    pass\n",
+])
+def test_guard_ignores_python_code_naming_the_keys(public, code):
+    commit(public, "uke/code.py", code)
+    assert guard(public).returncode == 0

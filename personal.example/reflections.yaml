@@ -1,3 +1,5 @@
 # Your own "why" for each technique, in your words. Lives in your personal data directory.
 reflections: []
 #  - {subject: katadori-ikkyo-omote-katameru, date: 2026-11-04, principle: p-harmony-over-speed, text: "..."}
+# `uke today` appends entries like this one, with the motto line of the day:
+#  - {subject: kata-ikkyo, date: 2026-11-25, motto: motto-2, principle: p-daily-life, text: "..."}

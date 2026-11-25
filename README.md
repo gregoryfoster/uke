@@ -77,6 +77,31 @@ private store. Run it before committing:
 uv run scripts/check_public.py
 ```
 
+## Daily ritual
+
+```
+uv run uke today                    # today's prompt; in a terminal it asks for your answer
+uv run uke today --date 2026-12-01  # another day's prompt
+uv run uke today --answer "..."     # answer without being asked
+```
+
+One motto line, one technique and one question, "Where did this show up in your day?". The prompt
+depends only on the date, so running it again the same day shows the same thing:
+
+- The motto line rotates in order, so eight days in a row cover all eight lines. It shows your text
+  from `motto.yaml` in your personal data, or only the line's theme if that line is empty.
+- The technique is a kumi waza or kata from the study set or the review set, picked by a hash of the
+  date. Review entries (Basic Arts not in the next exams) come up twice as often.
+- It shows the technique's kana, roots, meaning and clip link.
+
+Your answer is appended to `reflections.yaml` in your personal data, with the date, the technique, the
+motto line and the principle `p-daily-life`; then run `uke personal sync` to back it up. An empty
+answer saves nothing. Without personal data, `uke today` shows the prompt and says where answers
+would go. Saving keeps the comment lines at the top of `reflections.yaml` but not comments elsewhere,
+and replaces the file in one step, so an interruption leaves the old one intact. If `motto.yaml`
+cannot be read, the theme is shown; if `reflections.yaml` cannot be read, nothing is asked. Neither
+message quotes the file; `uv run scripts/validate.py` finds the line.
+
 ## Review status
 
 Every root starts as `draft`. Sensei confirms meanings (`status: confirmed`);

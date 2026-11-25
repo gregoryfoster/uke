@@ -1,4 +1,4 @@
-"""Command line: uke build deck|audio|all, uke voices, uke sample, uke personal (also `python -m uke ...`)."""
+"""Command line: uke build deck|audio|all, uke today, uke voices, uke sample, uke personal (also `python -m uke ...`)."""
 from __future__ import annotations
 
 import argparse
@@ -9,8 +9,8 @@ from pathlib import Path
 
 from . import REPO
 from .audio import build_commute
-from .data import load
-from . import personal
+from .data import load, load_motto
+from . import personal, today
 from .deck import anki_search, build_deck, compare, manifest_path, read_manifest
 from .tts import ENGINES, Synth, TTSError, concat, encode_mp3, make_engine
 
@@ -41,6 +41,10 @@ def main(argv=None) -> int:
     engine_args(v)
     s = sub.add_parser("sample", help="render five sample terms to build/tts-samples/ to compare voices")
     engine_args(s)
+    td = sub.add_parser("today", help="the daily ritual: one motto line, one technique, one question")
+    td.add_argument("--date", type=datetime.date.fromisoformat, default=None,
+                    help="show another day's prompt, YYYY-MM-DD (default: today)")
+    td.add_argument("--answer", help="answer without being asked (default: ask when run in a terminal)")
     pe = sub.add_parser("personal", help="where personal data lives, and syncing it with its private store")
     psub = pe.add_subparsers(dest="action", required=True)
     psub.add_parser("status", help="show the personal directory, its store and unsynced changes")
@@ -52,6 +56,8 @@ def main(argv=None) -> int:
 
     if a.cmd == "personal":
         return personal_cmd(a)
+    if a.cmd == "today":
+        return today_cmd(a)
 
     try:
         engine = make_engine(a.engine, a.ja_voice, a.en_voice, a.ja_rate, a.en_rate, a.gcp_project)
@@ -80,6 +86,54 @@ def main(argv=None) -> int:
     except TTSError as e:
         print(f"error: {e}", file=sys.stderr)
         return 1
+
+
+def today_cmd(a) -> int:
+    try:
+        p = today.pick(load(), load_motto(), a.date or datetime.date.today())
+    except ValueError as e:
+        print(f"error: {e}", file=sys.stderr)
+        return 1
+    where = personal.personal_dir()
+    has_personal = where.exists()
+    motto_text = None
+    if has_personal:
+        try:
+            motto_text = today.read_motto(where, p.motto_id)
+        except ValueError as e:
+            print(f"warning: {e}; showing the theme instead", file=sys.stderr)
+    print(today.render(p, motto_text))
+    if not has_personal:
+        print(f"\nNo personal data at {where}, so answers are not saved. With it, they go to "
+              f"{where / 'reflections.yaml'} (set it up with `uke personal init <url>`).")
+        return 0
+    try:
+        today.check_reflections(where)    # before asking, so an answer is never typed in vain
+    except ValueError as e:
+        print(f"error: {e}. Nothing was asked or saved.", file=sys.stderr)
+        return 1
+    answer = a.answer
+    if answer is None:
+        if not sys.stdin.isatty():
+            return 0
+        try:
+            answer = input("> ")
+        except EOFError:
+            answer = ""
+        except KeyboardInterrupt:
+            print("\nNothing saved.")
+            return 130
+    answer = answer.strip()
+    if not answer:
+        print("Nothing saved.")
+        return 0
+    try:
+        path = today.save(where, p, answer)
+    except ValueError as e:
+        print(f"error: {e}", file=sys.stderr)
+        return 1
+    print(f"Saved to {path}. Back it up with `uke personal sync`.")
+    return 0
 
 
 def personal_cmd(a) -> int:

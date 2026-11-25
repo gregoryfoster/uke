@@ -24,7 +24,8 @@ Built for one student (currently 5th kyu) first, dojo mates later.
 - This repo is public. Never commit motto text, reflections, voice notes or other personal practice data.
   Those live in a private store (first provider: a private GitHub repo, default name `uke-personal`), synced
   into the directory `UKE_PERSONAL` names, else `personal/` (gitignored); `personal.example/` shows the shape.
-  Code must run when that directory is absent, and must never print personal content.
+  Code must run when that directory is absent, and must never print personal content, except where
+  showing it to the user is the feature (`uke today` shows the day's motto line). Never in CI, logs or errors.
 - Never write motto text yourself; only the user pastes it.
 - Kumi waza are composed from term ids in `parts`; one entry per direction (omote/ura) so each is recalled separately.
 
