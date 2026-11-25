@@ -28,9 +28,10 @@ TEMPLATE_FILES = {TEMPLATE_MOTTO, TEMPLATE_REFLECTIONS, TEMPLATE + "README.md", 
 MOTTO_ID = re.compile(r"motto-[0-9]+")
 # the key at a line start, after "- ", "{" or ",", optionally quoted: YAML block, flow and JSON styles
 PERSONAL_KEYS = r"""(^|[-{,[:space:]])["']?(motto_text|reflections)["']?[[:space:]]*:"""
-# in Python, only a quoted key: {"motto_text": ...}
+# in Python, only a quoted key, as in a dict literal that could hold real text
 QUOTED_KEYS = r"""["'](motto_text|reflections)["'][[:space:]]*:"""
 INDEX = ":index"
+SELF = "scripts/check_public.py"
 
 
 def git(*args: str, ok=(0,), cwd=None) -> str:
@@ -56,8 +57,10 @@ def grep(rev: str, pattern: str, *pathspec: str) -> list[str]:
 
 def with_personal_keys(rev: str) -> list[str]:
     """Text files at rev with a motto_text or reflections key (two git processes)."""
+    # this script describes the keys it looks for, so it is never scanned itself; CI runs the newest
+    # version over every commit of a PR, so the exclusion also covers this file's earlier versions
     return (grep(rev, PERSONAL_KEYS, ".", ":(exclude,glob)**/*.py")
-            + grep(rev, QUOTED_KEYS, ":(glob)**/*.py", ":(exclude,glob)tests/**/*.py"))
+            + grep(rev, QUOTED_KEYS, ":(glob)**/*.py", ":(exclude,glob)tests/**/*.py", f":(exclude){SELF}"))
 
 
 def read(rev: str, path: str) -> str:

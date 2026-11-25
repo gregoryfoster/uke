@@ -409,3 +409,10 @@ def test_guard_still_scans_yaml_with_unquoted_keys(public):
     commit(public, "notes.yaml", f'motto_text:\n  motto-1: "{SECRET}"\n')
     r = guard(public)
     assert r.returncode == 1 and "notes.yaml: has a motto_text or reflections key" in r.stdout
+
+
+def test_guard_does_not_scan_its_own_source(public):
+    commit(public, "scripts/check_public.py", '# matches like {"motto_text": ...} are flagged elsewhere\n')
+    assert guard(public).returncode == 0
+    commit(public, "scripts/other.py", '# {"motto_text": ...}\n')
+    assert guard(public).returncode == 1
